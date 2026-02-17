@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroViz Pro — Neural Network Visualizer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@200;400;600;800&display=swap');
+:root{
+  --bg:#111d2e;--panel:#172235;--panel2:#1a2840;--border:#2a4060;--border2:#3a5878;
+  --a1:#00ffe1;--a2:#ff3cac;--a3:#9b5dff;--a4:#ffb700;--a5:#00ff88;--a6:#ff4466;
+  --text:#dff0ff;--dim:#7a9aba;--dim2:#4a6a8a;
+  --glow1:0 0 12px #00ffe188;--glow2:0 0 12px #ff3cac88;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;display:flex;height:100vh;overflow:hidden;background-image:radial-gradient(ellipse at 20% 50%,#1a2e48 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,#1e1640 0%,transparent 60%)}
+
+/* ── TABS ── */
+#left-panel{width:340px;min-width:340px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;position:relative;z-index:10;overflow:hidden}
+.tab-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.tab{flex:1;padding:9px 4px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1.5px;text-align:center;cursor:pointer;color:var(--dim);border-bottom:2px solid transparent;transition:all .2s;text-transform:uppercase}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--a1);border-bottom-color:var(--a1)}
+.tab-content{display:none;flex:1;overflow-y:auto;flex-direction:column}
+.tab-content.active{display:flex;flex-direction:column}
+.tab-content::-webkit-scrollbar{width:3px}
+.tab-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── SECTIONS ── */
+.sec{padding:12px 16px;border-bottom:1px solid var(--border)}
+.sec-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim2);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px}
+.panel-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.panel-header h1{font-family:'Share Tech Mono',monospace;font-size:15px;color:var(--a1);text-shadow:var(--glow1);letter-spacing:2px}
+.panel-header p{font-size:10px;color:var(--dim2);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-top:3px}
+
+/* ── FORM ELEMENTS ── */
+.field{margin-bottom:10px}
+.field-label{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:5px;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center}
+select,input[type=number]{width:100%;background:#1a2e48;border:1px solid var(--border);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;padding:7px 10px;outline:none;border-radius:2px;transition:border-color .2s}
+select:hover,select:focus,input[type=number]:hover,input[type=number]:focus{border-color:var(--a1)}
+.sel-wrap{position:relative}
+.sel-wrap::after{content:'▾';position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--a1);pointer-events:none;font-size:10px}
+input[type=range]{width:100%;height:3px;background:var(--border);outline:none;-webkit-appearance:none;cursor:pointer;border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--a1);border-radius:50%;box-shadow:0 0 6px var(--a1);cursor:pointer}
+.val-badge{background:#1a2e48;border:1px solid var(--border);padding:2px 7px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--a1);border-radius:2px;min-width:52px;text-align:center}
+
+/* ── BUTTONS ── */
+.btn-row{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.btn{flex:1;padding:9px 6px;border:1px solid;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;background:transparent;border-radius:2px;transition:all .2s}
+.btn-cyan{border-color:var(--a1);color:var(--a1)}.btn-cyan:hover,.btn-cyan.active{background:var(--a1);color:#0a1628;box-shadow:var(--glow1)}
+.btn-pink{border-color:var(--a2);color:var(--a2)}.btn-pink:hover,.btn-pink.active{background:var(--a2);color:#fff;box-shadow:var(--glow2)}
+.btn-red{border-color:var(--a6);color:var(--a6)}.btn-red:hover{background:var(--a6);color:#fff}
+.btn-gold{border-color:var(--a4);color:var(--a4)}.btn-gold:hover{background:var(--a4);color:#111}
+.btn-green{border-color:var(--a5);color:var(--a5)}.btn-green:hover{background:var(--a5);color:#111}
+.btn-purple{border-color:var(--a3);color:var(--a3)}.btn-purple:hover{background:var(--a3);color:#fff}
+.btn-cyan.pulse{animation:pulse-btn 1s ease-in-out infinite}
+@keyframes pulse-btn{0%,100%{box-shadow:0 0 6px var(--a1)}50%{box-shadow:0 0 20px var(--a1),0 0 40px #00ffe130}}
+
+/* ── TOGGLE ── */
+.toggle-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.toggle-label{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px}
+.toggle-sw{position:relative;width:34px;height:17px;cursor:pointer}
+.toggle-sw input{display:none}
+.toggle-track{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--border);border-radius:17px;transition:background .2s}
+.toggle-thumb{position:absolute;height:11px;width:11px;left:3px;bottom:3px;background:var(--dim2);border-radius:50%;transition:transform .2s,background .2s}
+.toggle-sw input:checked+.toggle-track{background:#00ffe122;border:1px solid var(--a1)}
+.toggle-sw input:checked+.toggle-track .toggle-thumb{transform:translateX(17px);background:var(--a1);box-shadow:0 0 5px var(--a1)}
+
+/* ── STATS ── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat-box{background:#1a2e48;border:1px solid var(--border);padding:7px 10px;border-radius:2px}
+.stat-key{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px}
+.stat-val{font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:700;margin-top:2px}
+.c-cyan{color:var(--a1)}.c-gold{color:var(--a4)}.c-green{color:var(--a5)}.c-red{color:var(--a6)}.c-pink{color:var(--a2)}.c-purple{color:var(--a3)}
+
+/* ── LAYER BUILDER ── */
+.layer-builder{padding:0 16px 10px}
+.layer-chip{display:flex;align-items:center;gap:6px;background:#1a2e48;border:1px solid var(--border);padding:6px 10px;margin-bottom:5px;border-radius:3px;cursor:pointer;transition:border-color .2s}
+.layer-chip:hover{border-color:var(--a1)}
+.layer-chip.selected{border-color:var(--a1);background:#1a3848}
+.layer-chip .lc-type{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--a1);width:70px}
+.layer-chip .lc-info{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);flex:1}
+.layer-chip .lc-act{font-size:9px;color:var(--a3);font-family:'Share Tech Mono',monospace}
+.layer-chip .lc-del{color:var(--a6);font-size:12px;cursor:pointer;padding:0 3px;line-height:1}
+.layer-chip .lc-del:hover{color:#fff}
+.lc-frozen{color:var(--a4)!important}
+.add-layer-row{display:flex;gap:6px;margin-top:6px}
+
+/* ── ANNOTATION PINS ── */
+.ann-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-family:'Share Tech Mono',monospace;font-size:9px}
+.ann-color{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:2px}
+.ann-text{flex:1;color:var(--text);line-height:1.5}
+.ann-del{color:var(--a6);cursor:pointer;font-size:11px}
+
+/* ── CONFUSION MATRIX ── */
+#conf-matrix{display:grid;gap:2px;margin-top:8px}
+.cm-cell{display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:9px;border-radius:2px;min-width:22px;height:22px}
+
+/* ── CANVAS ── */
+#right-panel{flex:1;position:relative;overflow:hidden;cursor:grab}
+#right-panel.dragging{cursor:grabbing}
+#right-panel.panning{cursor:move}
+#three-canvas,#weight-overlay{position:absolute;top:0;left:0;width:100%;height:100%}
+#weight-overlay{pointer-events:none;z-index:5}
+
+/* ── HUD ── */
+#hud{position:absolute;top:12px;right:12px;pointer-events:none;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);text-align:right;letter-spacing:1px;line-height:1.9}
+#hud .hud-title{font-size:14px;color:var(--a1);text-shadow:var(--glow1);letter-spacing:3px}
+#hud .hud-epoch{color:var(--a4);font-size:12px}
+
+/* ── LEGEND ── */
+#legend{position:absolute;top:12px;left:12px;pointer-events:none;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px}
+.leg-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.leg-line{width:20px;height:2px;border-radius:1px;flex-shrink:0}
+
+/* ── PHASE BANNER ── */
+#phase-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:3px;padding:5px 14px;border:1px solid;pointer-events:none;opacity:0;transition:opacity .3s;z-index:20;text-transform:uppercase}
+#phase-banner.show{opacity:1}
+#phase-banner.forward{color:#7b2dff;border-color:#7b2dff;background:#7b2dff18;box-shadow:0 0 20px #7b2dff44}
+#phase-banner.backward{color:#ffb700;border-color:#ffb700;background:#ffb70018;box-shadow:0 0 20px #ffb70044}
+#phase-banner.update{color:#00ffe1;border-color:#00ffe1;background:#00ffe118;box-shadow:0 0 20px #00ffe144}
+
+/* ── WEIGHT DETAIL BAR ── */
+#weight-detail{position:absolute;bottom:38px;left:50%;transform:translateX(-50%);background:#0e1e30f0;border:1px solid #2a4060;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text);padding:8px 14px;pointer-events:none;z-index:30;border-radius:3px;display:none;gap:18px;align-items:center;max-width:700px;box-shadow:0 2px 20px #00000060}
+.wd-col{display:flex;flex-direction:column;gap:2px}
+.wd-lbl{color:var(--dim);font-size:8px;letter-spacing:2px}
+.wd-v{font-size:12px;font-weight:700}
+.wd-arrow{font-size:16px;color:var(--border2)}
+.wd-eq{color:var(--dim);font-size:9px;letter-spacing:1px;line-height:1.9}
+
+/* ── TOOLTIP ── */
+#tooltip{position:absolute;background:#0e1e30ee;border:1px solid var(--a1);padding:7px 11px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--a1);pointer-events:none;display:none;z-index:100;border-radius:2px;box-shadow:0 0 10px #00ffe130;line-height:1.7;max-width:180px}
+
+/* ── NODE DETAIL PANEL ── */
+#node-detail{position:absolute;top:50%;right:12px;transform:translateY(-50%);background:#0e1e30f0;border:1px solid var(--a1);padding:12px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text);z-index:25;border-radius:3px;width:180px;display:none;box-shadow:0 0 20px #00ffe120}
+#node-detail h3{color:var(--a1);font-size:11px;letter-spacing:2px;margin-bottom:8px}
+#node-detail .nd-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)}
+#node-detail .nd-row:last-child{border-bottom:none}
+#node-close{position:absolute;top:6px;right:8px;cursor:pointer;color:var(--a6);font-size:13px;pointer-events:all}
+
+/* ── MATRIX VIEWER ── */
+#matrix-viewer{position:absolute;bottom:38px;left:12px;background:#0e1e30f0;border:1px solid var(--a3);padding:10px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text);z-index:25;border-radius:3px;display:none;box-shadow:0 0 20px #9b5dff20;max-width:300px;pointer-events:all}
+#matrix-viewer h3{color:var(--a3);letter-spacing:2px;margin-bottom:6px;font-size:10px}
+#mv-canvas{display:block;image-rendering:pixelated}
+#mv-close{position:absolute;top:6px;right:8px;cursor:pointer;color:var(--a6);font-size:13px}
+
+/* ── ATTENTION GRID ── */
+#attn-viewer{position:absolute;top:60px;left:50%;transform:translateX(-50%);background:#0e1e30f0;border:1px solid var(--a2);padding:10px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text);z-index:25;border-radius:3px;display:none;box-shadow:0 0 20px #ff3cac20;pointer-events:all}
+#attn-viewer h3{color:var(--a2);letter-spacing:2px;margin-bottom:6px;font-size:10px}
+#av-canvas{display:block}
+#av-close{position:absolute;top:6px;right:8px;cursor:pointer;color:var(--a6);font-size:13px}
+
+/* ── TIMELINE SCRUBBER ── */
+#timeline{position:absolute;bottom:38px;left:0;right:0;height:36px;background:#0a1628e8;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 14px;z-index:20;pointer-events:all}
+#tl-scrubber{flex:1;height:3px;background:var(--border);border-radius:2px;cursor:pointer;position:relative}
+#tl-fill{height:100%;background:linear-gradient(90deg,var(--a3),var(--a1));border-radius:2px;transition:width .1s}
+#tl-thumb{position:absolute;top:-5px;width:13px;height:13px;background:var(--a1);border-radius:50%;box-shadow:0 0 6px var(--a1);cursor:grab;transform:translateX(-50%)}
+#tl-thumb:active{cursor:grabbing}
+.tl-btn{background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:12px;padding:3px;line-height:1;transition:color .2s}
+.tl-btn:hover{color:var(--a1)}
+#tl-step-info{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;min-width:100px}
+
+/* ── STATUS BAR ── */
+#status-bar{position:absolute;bottom:0;left:0;right:0;height:30px;background:#0d1e30;border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:20px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;z-index:30}
+.sb-dot{width:5px;height:5px;border-radius:50%;background:var(--dim)}
+.sb-dot.active{background:var(--a5);box-shadow:0 0 5px var(--a5);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.sb-item{display:flex;align-items:center;gap:5px}
+
+/* ── DRAW CANVAS ── */
+#draw-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:none;cursor:crosshair;z-index:15}
+
+/* ── AUDIO indicator ── */
+#audio-indicator{position:absolute;top:12px;left:50%;transform:translateX(-50%);pointer-events:none;display:none;z-index:20}
+.audio-bars{display:flex;gap:2px;align-items:flex-end;height:20px}
+.audio-bar{width:3px;background:var(--a1);border-radius:1px;opacity:.7;animation:audio-pulse 0.5s ease-in-out infinite}
+.audio-bar:nth-child(2){animation-delay:.1s}
+.audio-bar:nth-child(3){animation-delay:.2s}
+.audio-bar:nth-child(4){animation-delay:.3s}
+.audio-bar:nth-child(5){animation-delay:.15s}
+@keyframes audio-pulse{0%,100%{height:4px}50%{height:16px}}
+
+/* ── GRADIENT HEALTH ── */
+.health-bar{height:4px;border-radius:2px;overflow:hidden;margin-top:4px;background:var(--border)}
+.health-fill{height:100%;transition:width .4s,background .4s;border-radius:2px}
+
+/* ── MISC ── */
+.mini-chart{display:block;width:100%;height:50px}
+.info-text{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);line-height:1.7;padding:4px 0}
+.info-text span{color:var(--text)}
+.tag{display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;font-family:'Share Tech Mono',monospace;margin:1px}
+.tag-cyan{background:#00ffe115;color:var(--a1);border:1px solid #00ffe130}
+.tag-red{background:#ff446615;color:var(--a6);border:1px solid #ff446630}
+.tag-gold{background:#ffb70015;color:var(--a4);border:1px solid #ffb70030}
+.tag-green{background:#00ff8815;color:var(--a5);border:1px solid #00ff8830}
+.tag-purple{background:#9b5dff15;color:var(--a3);border:1px solid #9b5dff30}
+.divider{height:1px;background:var(--border);margin:6px 0}
+.badge-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.cam-hint{position:absolute;bottom:72px;right:12px;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim2);letter-spacing:1px;pointer-events:none;line-height:2;text-align:right}
+</style>
+</head>
+<body>
+
+<!-- ══════════ LEFT PANEL ══════════ -->
+<div id="left-panel">
+  <div class="panel-header">
+    <h1>⬡ NEURO·VIZ PRO</h1>
+    <p>// NEURAL NETWORK VISUALIZER v3.0</p>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab active" data-tab="config">CONFIG</div>
+    <div class="tab" data-tab="arch">ARCH</div>
+    <div class="tab" data-tab="train">TRAIN</div>
+    <div class="tab" data-tab="analysis">ANALYSIS</div>
+    <div class="tab" data-tab="tools">TOOLS</div>
+  </div>
+
+  <!-- ── CONFIG TAB ── -->
+  <div class="tab-content active" id="tab-config">
+    <div class="sec">
+      <div class="sec-label">Dataset</div>
+      <div class="field">
+        <div class="sel-wrap">
+          <select id="dataset-select">
+            <optgroup label="── TABULAR ──">
+              <option value="xor">XOR Problem</option>
+              <option value="iris">Iris Classification</option>
+              <option value="moons">Two Moons</option>
+              <option value="spiral">Spiral Dataset</option>
+              <option value="circles">Concentric Circles</option>
+            </optgroup>
+            <optgroup label="── IMAGE ──">
+              <option value="mnist_sim">MNIST Digits (sim)</option>
+              <option value="cifar_sim">CIFAR-10 (sim)</option>
+              <option value="fashion_sim">Fashion MNIST (sim)</option>
+            </optgroup>
+            <optgroup label="── SEQUENCE ──">
+              <option value="sine_wave">Sine Wave</option>
+              <option value="stock_sim">Time Series (sim)</option>
+              <option value="copy_task">Copy Task</option>
+            </optgroup>
+            <optgroup label="── LANGUAGE ──">
+              <option value="char_lm">Character LM</option>
+              <option value="word_embed">Word Embeddings</option>
+              <option value="sentiment">Sentiment (sim)</option>
+              <option value="causal_lm">Causal LM (GPT-style)</option>
+            </optgroup>
+            <optgroup label="── GENERATIVE ──">
+              <option value="vae_data">VAE Dataset</option>
+              <option value="gan_data">GAN Dataset</option>
+              <option value="diffusion_data">Diffusion (sim)</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <div class="info-text" id="ds-info"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">Network</div>
+      <div class="field">
+        <div class="sel-wrap">
+          <select id="network-select">
+            <optgroup label="── FEEDFORWARD ──">
+              <option value="mlp">MLP</option>
+              <option value="deep_mlp">Deep MLP (6 layers)</option>
+              <option value="wide_mlp">Wide MLP</option>
+            </optgroup>
+            <optgroup label="── CONVOLUTIONAL ──">
+              <option value="cnn">CNN</option>
+              <option value="resnet">ResNet Block</option>
+              <option value="unet">U-Net</option>
+            </optgroup>
+            <optgroup label="── RECURRENT ──">
+              <option value="rnn">Vanilla RNN</option>
+              <option value="lstm">LSTM</option>
+              <option value="gru">GRU</option>
+              <option value="birnn">Bidirectional RNN</option>
+            </optgroup>
+            <optgroup label="── ATTENTION ──">
+              <option value="attention">Self-Attention</option>
+              <option value="transformer">Transformer Encoder</option>
+              <option value="gpt">GPT-style Decoder</option>
+              <option value="bert">BERT-style Encoder</option>
+              <option value="mha">Multi-Head Attention</option>
+            </optgroup>
+            <optgroup label="── GENERATIVE ──">
+              <option value="vae">VAE</option>
+              <option value="gan">GAN Generator</option>
+              <option value="diffusion">Diffusion U-Net</option>
+            </optgroup>
+            <optgroup label="── OTHER ──">
+              <option value="autoencoder">Autoencoder</option>
+              <option value="rbm">RBM</option>
+              <option value="hopfield">Hopfield Network</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <div class="info-text" id="net-info"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">Optimizer & Loss</div>
+      <div class="field">
+        <div class="field-label">OPTIMIZER</div>
+        <div class="sel-wrap">
+          <select id="opt-select">
+            <option value="sgd">SGD</option>
+            <option value="momentum">SGD + Momentum</option>
+            <option value="adagrad">AdaGrad</option>
+            <option value="rmsprop">RMSProp</option>
+            <option value="adam" selected>Adam</option>
+            <option value="adamw">AdamW</option>
+            <option value="nadam">NAdam</option>
+            <option value="lion">Lion</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">LOSS FUNCTION</div>
+        <div class="sel-wrap">
+          <select id="loss-select">
+            <option value="mse">MSE</option>
+            <option value="cross_entropy" selected>Cross Entropy</option>
+            <option value="bce">Binary Cross Entropy</option>
+            <option value="huber">Huber</option>
+            <option value="kl">KL Divergence</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">LR SCHEDULER</div>
+        <div class="sel-wrap">
+          <select id="sched-select">
+            <option value="none">None (Constant)</option>
+            <option value="step">Step Decay</option>
+            <option value="cosine">Cosine Annealing</option>
+            <option value="warmup">Linear Warmup</option>
+            <option value="exp">Exponential Decay</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">Hyperparameters</div>
+      <div class="field">
+        <div class="field-label">LEARNING RATE <span class="val-badge" id="lr-val">0.010</span></div>
+        <input type="range" id="lr-sl" min="-4" max="-1" step="0.01" value="-2">
+      </div>
+      <div class="field">
+        <div class="field-label">BATCH SIZE <span class="val-badge" id="bs-val">32</span></div>
+        <input type="range" id="bs-sl" min="1" max="6" step="1" value="5">
+      </div>
+      <div class="field">
+        <div class="field-label">ANIM SPEED <span class="val-badge" id="sp-val">1.0×</span></div>
+        <input type="range" id="sp-sl" min="0.1" max="5" step="0.1" value="1">
+      </div>
+      <div class="field">
+        <div class="field-label">DROPOUT RATE <span class="val-badge" id="do-val">0.0</span></div>
+        <input type="range" id="do-sl" min="0" max="0.8" step="0.05" value="0">
+      </div>
+      <div class="field">
+        <div class="field-label">L2 REGULARIZATION <span class="val-badge" id="l2-val">0.000</span></div>
+        <input type="range" id="l2-sl" min="0" max="0.1" step="0.001" value="0">
+      </div>
+      <div class="field">
+        <div class="field-label">GRAD CLIP <span class="val-badge" id="gc-val">OFF</span></div>
+        <input type="range" id="gc-sl" min="0" max="5" step="0.1" value="0">
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">Display</div>
+      <div class="toggle-row"><span class="toggle-label">SHOW GRADIENTS</span><label class="toggle-sw"><input type="checkbox" id="tog-grad" checked><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+      <div class="toggle-row"><span class="toggle-label">SHOW ACTIVATIONS</span><label class="toggle-sw"><input type="checkbox" id="tog-act" checked><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+      <div class="toggle-row"><span class="toggle-label">SHOW WEIGHT NUMS</span><label class="toggle-sw"><input type="checkbox" id="tog-wnum" checked><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+      <div class="toggle-row"><span class="toggle-label">HEATMAP MODE</span><label class="toggle-sw"><input type="checkbox" id="tog-heat"><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+      <div class="toggle-row"><span class="toggle-label">SHOW DEAD NEURONS</span><label class="toggle-sw"><input type="checkbox" id="tog-dead" checked><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+      <div class="toggle-row"><span class="toggle-label">AUTO-ORBIT 3D</span><label class="toggle-sw"><input type="checkbox" id="tog-3d"><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+      <div class="toggle-row"><span class="toggle-label">AUDIO FEEDBACK</span><label class="toggle-sw"><input type="checkbox" id="tog-audio"><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+      <div class="toggle-row"><span class="toggle-label">DARK / LIGHT THEME</span><label class="toggle-sw"><input type="checkbox" id="tog-theme"><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+    </div>
+  </div>
+
+  <!-- ── ARCH TAB ── -->
+  <div class="tab-content" id="tab-arch">
+    <div class="sec">
+      <div class="sec-label">Layer Builder</div>
+      <div class="layer-builder" id="layer-builder"></div>
+      <div class="add-layer-row">
+        <div class="sel-wrap" style="flex:1">
+          <select id="add-layer-type">
+            <option value="dense">Dense</option>
+            <option value="conv">Conv</option>
+            <option value="lstm_l">LSTM</option>
+            <option value="attention_l">Attention</option>
+            <option value="dropout_l">Dropout</option>
+            <option value="bn_l">BatchNorm</option>
+          </select>
+        </div>
+        <input type="number" id="add-layer-size" value="8" min="1" max="64" style="width:60px">
+        <button class="btn btn-cyan" style="padding:6px 10px;font-size:10px" id="btn-add-layer">+ ADD</button>
+      </div>
+      <div class="divider"></div>
+      <div class="field">
+        <div class="field-label">ACTIVATION (ALL)</div>
+        <div class="sel-wrap">
+          <select id="act-select">
+            <option value="relu">ReLU</option>
+            <option value="gelu">GELU</option>
+            <option value="swish">Swish</option>
+            <option value="tanh">Tanh</option>
+            <option value="sigmoid">Sigmoid</option>
+            <option value="leaky">Leaky ReLU</option>
+            <option value="elu">ELU</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row" style="padding:0;border:none;margin-top:8px">
+        <button class="btn btn-green" id="btn-save-arch">💾 SAVE</button>
+        <button class="btn btn-gold" id="btn-load-arch">📂 LOAD</button>
+        <button class="btn btn-red" id="btn-clear-arch">✕ CLEAR</button>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Templates</div>
+      <div class="badge-row" id="arch-templates"></div>
+    </div>
+  </div>
+
+  <!-- ── TRAIN TAB ── -->
+  <div class="tab-content" id="tab-train">
+    <div class="sec">
+      <div class="sec-label">Live Stats</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-key">EPOCH</div><div class="stat-val c-cyan" id="s-epoch">0</div></div>
+        <div class="stat-box"><div class="stat-key">STEP</div><div class="stat-val c-cyan" id="s-step">0</div></div>
+        <div class="stat-box"><div class="stat-key">LOSS</div><div class="stat-val c-gold" id="s-loss">—</div></div>
+        <div class="stat-box"><div class="stat-key">ACCURACY</div><div class="stat-val c-green" id="s-acc">—</div></div>
+        <div class="stat-box"><div class="stat-key">GRAD NORM</div><div class="stat-val c-pink" id="s-grad">—</div></div>
+        <div class="stat-box"><div class="stat-key">WEIGHT Δ</div><div class="stat-val c-purple" id="s-delta">—</div></div>
+        <div class="stat-box"><div class="stat-key">PARAMS</div><div class="stat-val c-cyan" id="s-params">—</div></div>
+        <div class="stat-box"><div class="stat-key">EFFECT LR</div><div class="stat-val c-gold" id="s-elr">—</div></div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Loss Curve</div>
+      <canvas class="mini-chart" id="loss-chart" height="60"></canvas>
+      <div class="sec-label" style="margin-top:10px">Accuracy Curve</div>
+      <canvas class="mini-chart" id="acc-chart" height="50"></canvas>
+    </div>
+    <div class="sec">
+      <div class="sec-label">LR Schedule Preview</div>
+      <canvas class="mini-chart" id="lr-chart" height="45"></canvas>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Gradient Health</div>
+      <div id="grad-health-list"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Weight Distribution</div>
+      <canvas class="mini-chart" id="wdist-chart" height="55"></canvas>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Confusion Matrix</div>
+      <div id="conf-matrix-wrap"><div id="conf-matrix"></div></div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Activation Histograms</div>
+      <div id="act-hist-list"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Optimizer Comparison</div>
+      <canvas class="mini-chart" id="opt-compare-chart" height="55"></canvas>
+      <div class="btn-row" style="padding:0;border:none;margin-top:6px">
+        <button class="btn btn-purple" id="btn-start-compare">▶ RUN A/B</button>
+        <button class="btn btn-red" id="btn-stop-compare">✕ CLEAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ANALYSIS TAB ── -->
+  <div class="tab-content" id="tab-analysis">
+    <div class="sec">
+      <div class="sec-label">Layer Activity</div>
+      <div id="layer-act-list"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Dead Neuron Count</div>
+      <div id="dead-neuron-info" class="info-text">Run training to detect dead neurons.</div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Gradient Flow</div>
+      <canvas class="mini-chart" id="grad-flow-chart" height="55"></canvas>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Pruning Mode</div>
+      <div class="toggle-row"><span class="toggle-label">ENABLE PRUNING</span><label class="toggle-sw"><input type="checkbox" id="tog-prune"><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+      <div class="field">
+        <div class="field-label">PRUNE THRESHOLD <span class="val-badge" id="prune-val">0.05</span></div>
+        <input type="range" id="prune-sl" min="0.01" max="0.5" step="0.01" value="0.05">
+      </div>
+      <button class="btn btn-gold" id="btn-prune" style="width:100%;margin-top:4px">✂ PRUNE NOW</button>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Quantization Preview</div>
+      <div class="field">
+        <div class="field-label">PRECISION</div>
+        <div class="sel-wrap">
+          <select id="quant-select">
+            <option value="32">FP32 (full)</option>
+            <option value="16">FP16</option>
+            <option value="8">INT8</option>
+            <option value="4">INT4</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-purple" id="btn-quant" style="width:100%;margin-top:4px">⚙ APPLY QUANTIZATION</button>
+      <div class="info-text" id="quant-info" style="margin-top:6px"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Parameter Efficiency</div>
+      <div id="param-eff" class="info-text"></div>
+    </div>
+  </div>
+
+  <!-- ── TOOLS TAB ── -->
+  <div class="tab-content" id="tab-tools">
+    <div class="sec">
+      <div class="sec-label">Draw Input Data</div>
+      <div class="toggle-row"><span class="toggle-label">DRAW MODE</span><label class="toggle-sw"><input type="checkbox" id="tog-draw"><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+      <div class="info-text">Toggle draw mode, then click in the visualization to add 2D data points (for XOR/Moons/Spiral).</div>
+      <button class="btn btn-red" id="btn-clear-draw" style="width:100%;margin-top:6px">✕ CLEAR DRAWN POINTS</button>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Annotations</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input type="text" id="ann-input" placeholder="Annotation text..." style="flex:1;background:#1a2e48;border:1px solid var(--border);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:10px;padding:6px 8px;outline:none;border-radius:2px">
+        <button class="btn btn-cyan" style="padding:6px 10px;font-size:11px" id="btn-add-ann">+</button>
+      </div>
+      <div id="ann-list"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Export</div>
+      <div class="btn-row" style="padding:0;border:none;flex-direction:column;gap:6px">
+        <button class="btn btn-cyan" id="btn-export-png" style="width:100%">📷 SCREENSHOT PNG</button>
+        <button class="btn btn-green" id="btn-export-csv" style="width:100%">📊 EXPORT METRICS CSV</button>
+        <button class="btn btn-gold" id="btn-export-arch" style="width:100%">💾 EXPORT ARCH JSON</button>
+        <button class="btn btn-purple" id="btn-share" style="width:100%">🔗 COPY SHARE URL</button>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Inject Noise</div>
+      <div class="field">
+        <div class="field-label">NOISE SCALE <span class="val-badge" id="noise-val">0.1</span></div>
+        <input type="range" id="noise-sl" min="0.01" max="1" step="0.01" value="0.1">
+      </div>
+      <button class="btn btn-pink" id="btn-inject-noise" style="width:100%;margin-top:4px">⚡ INJECT NOISE</button>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Freeze Layers</div>
+      <div id="freeze-list"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-label">Keyboard Shortcuts</div>
+      <div class="info-text">
+        <span>SPACE</span> — Play/Pause<br>
+        <span>N</span> — Step forward<br>
+        <span>R</span> — Reset<br>
+        <span>H</span> — Toggle heatmap<br>
+        <span>A</span> — Toggle attention<br>
+        <span>M</span> — Weight matrix view<br>
+        <span>+/-</span> — Zoom<br>
+        <span>0</span> — Reset camera<br>
+        <span>Arrows</span> — Pan<br>
+        <span>ESC</span> — Close panels
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CONTROL BUTTONS ══════════ -->
+<div style="position:absolute;left:0;bottom:0;width:340px;z-index:20">
+  <div class="btn-row" style="background:var(--panel);border-top:1px solid var(--border)">
+    <button class="btn btn-cyan" id="btn-play">▶ ANIMATE</button>
+    <button class="btn btn-gold" id="btn-step">⟫ STEP</button>
+    <button class="btn btn-pink" id="btn-pause">⏸ PAUSE</button>
+    <button class="btn btn-red" id="btn-reset">⊘ RESET</button>
+  </div>
+</div>
+
+<!-- ══════════ RIGHT PANEL ══════════ -->
+<div id="right-panel">
+  <canvas id="three-canvas"></canvas>
+  <canvas id="weight-overlay"></canvas>
+  <canvas id="draw-canvas"></canvas>
+
+  <div id="phase-banner"></div>
+
+  <div id="hud">
+    <div class="hud-title" id="hud-title">SELECT NETWORK</div>
+    <div id="hud-net">—</div>
+    <div id="hud-ds">—</div>
+    <div class="hud-epoch" id="hud-epoch">EPOCH 0</div>
+    <div id="hud-lr" style="color:var(--a3);font-size:9px"></div>
+  </div>
+
+  <div id="legend">
+    <div class="leg-row"><div class="leg-line" style="background:#00ffe1;box-shadow:0 0 5px #00ffe1"></div>Positive Weight</div>
+    <div class="leg-row"><div class="leg-line" style="background:#ff4466;box-shadow:0 0 5px #ff4466"></div>Negative Weight</div>
+    <div class="leg-row"><div class="leg-line" style="background:#ffb700;box-shadow:0 0 5px #ffb700"></div>Gradient</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#9b5dff;box-shadow:0 0 5px #9b5dff"></div>Activation Flow</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#555;border:1px solid #888"></div>Dead Neuron</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#ffb700;box-shadow:0 0 5px #ffb700"></div>Frozen Layer</div>
+  </div>
+
+  <div id="audio-indicator"><div class="audio-bars"><div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div></div></div>
+
+  <div id="weight-detail">
+    <div class="wd-col"><div class="wd-lbl">LAYER·WEIGHT</div><div class="wd-v c-cyan" id="wd-lw">—</div></div>
+    <div class="wd-col"><div class="wd-lbl">OLD</div><div class="wd-v" id="wd-old">—</div></div>
+    <div class="wd-arrow">→</div>
+    <div class="wd-col"><div class="wd-lbl">∇ GRADIENT</div><div class="wd-v c-gold" id="wd-g">—</div></div>
+    <div class="wd-col"><div class="wd-lbl">FORMULA</div><div class="wd-eq" id="wd-f">w ← w − lr·∇</div></div>
+    <div class="wd-col"><div class="wd-lbl">Δ DELTA</div><div class="wd-v c-pink" id="wd-d">—</div></div>
+    <div class="wd-arrow">→</div>
+    <div class="wd-col"><div class="wd-lbl">NEW</div><div class="wd-v c-green" id="wd-n">—</div></div>
+  </div>
+
+  <div id="node-detail">
+    <div id="node-close">✕</div>
+    <h3 id="nd-title">NODE INFO</h3>
+    <div class="nd-row"><span>Activation</span><span class="c-cyan" id="nd-act">—</span></div>
+    <div class="nd-row"><span>Gradient</span><span class="c-gold" id="nd-grad">—</span></div>
+    <div class="nd-row"><span>In-degree</span><span class="c-purple" id="nd-indeg">—</span></div>
+    <div class="nd-row"><span>Dead</span><span class="c-red" id="nd-dead">—</span></div>
+    <div class="nd-row"><span>Frozen</span><span class="c-gold" id="nd-frozen">—</span></div>
+    <div class="nd-row"><span>Avg |w_in|</span><span class="c-cyan" id="nd-avgw">—</span></div>
+    <canvas id="nd-act-chart" width="148" height="35" style="margin-top:6px;display:block"></canvas>
+  </div>
+
+  <div id="matrix-viewer">
+    <div id="mv-close">✕</div>
+    <h3 id="mv-title">WEIGHT MATRIX</h3>
+    <canvas id="mv-canvas" width="240" height="160"></canvas>
+    <div class="info-text" id="mv-info" style="margin-top:4px"></div>
+  </div>
+
+  <div id="attn-viewer">
+    <div id="av-close">✕</div>
+    <h3>ATTENTION SCORES</h3>
+    <canvas id="av-canvas" width="200" height="200"></canvas>
+  </div>
+
+  <div id="timeline">
+    <button class="tl-btn" id="tl-start">⏮</button>
+    <button class="tl-btn" id="tl-prev">◀</button>
+    <div id="tl-scrubber"><div id="tl-fill" style="width:0%"></div><div id="tl-thumb" style="left:0%"></div></div>
+    <button class="tl-btn" id="tl-next">▶</button>
+    <button class="tl-btn" id="tl-end">⏭</button>
+    <div id="tl-step-info">STEP 0 / 0</div>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <div class="cam-hint">🖱 DRAG orbit &nbsp;|&nbsp; SHIFT+DRAG pan<br>SCROLL zoom &nbsp;|&nbsp; DBL-CLICK reset</div>
+
+  <div id="status-bar">
+    <div class="sb-item"><div class="sb-dot" id="sb-dot"></div><span id="sb-status">IDLE</span></div>
+    <div class="sb-item">⊕ <span id="sb-neurons">0</span></div>
+    <div class="sb-item">⊞ <span id="sb-conns">0</span></div>
+    <div class="sb-item">◉ <span id="sb-phase">—</span></div>
+    <div class="sb-item" style="margin-left:auto;color:var(--dim2)">NEUROVIZ PRO v3.0</div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  GLOBALS
+// ══════════════════════════════════════════════════════════
+const canvas3d    = document.getElementById('three-canvas');
+const overlayC    = document.getElementById('weight-overlay');
+const overlayCtx  = overlayC.getContext('2d');
+const drawC       = document.getElementById('draw-canvas');
+const drawCtx     = drawC.getContext('2d');
+const rightPanel  = document.getElementById('right-panel');
+const tooltip     = document.getElementById('tooltip');
+
+// Three.js
+const renderer = new THREE.WebGLRenderer({canvas:canvas3d,antialias:true,alpha:false,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setClearColor(0x111d2e,1);
+const scene  = new THREE.Scene();
+scene.fog    = new THREE.FogExp2(0x111d2e,0.016);
+const camera = new THREE.PerspectiveCamera(50,1,0.1,1000);
+
+// Lights
+scene.add(new THREE.AmbientLight(0x334466,1.2));
+const dL1 = new THREE.DirectionalLight(0x00ffe1,0.7); dL1.position.set(5,8,5);  scene.add(dL1);
+const dL2 = new THREE.DirectionalLight(0xff3cac,0.4); dL2.position.set(-5,-3,3);scene.add(dL2);
+
+const raycaster = new THREE.Raycaster();
+const mouse     = new THREE.Vector2();
+const vizGroup  = new THREE.Group(); scene.add(vizGroup);
+
+// ── RESIZE ──
+function resize(){
+  const w=rightPanel.clientWidth,h=rightPanel.clientHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+  overlayC.width=drawC.width=w;
+  overlayC.height=drawC.height=h;
+}
+resize(); window.addEventListener('resize',resize);
+
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+const S = {
+  running:false, epoch:0, step:0, loss:null,
+  lossHist:[], accHist:[], gradNormHist:[], lrHist:[],
+  speed:1, lr:0.01, batchSize:32, dropout:0, l2:0,
+  gradClip:0, noiseScale:0.1, pruneThresh:0.05,
+  showGrad:true, showAct:true, showWNum:true,
+  heatmap:false, showDead:true, audio:false,
+  drawMode:false,
+  weights:[], prevWeights:[], gradients:[], activations:[],
+  layerSizes:[], layerNames:[], layerTypes:[],
+  deadNeurons:[], frozenLayers:new Set(),
+  drawnPoints:[], annotations:[],
+  trainHistory:[], historyPtr:0,
+  nodes:[], edges:[],
+  selectedNode:null, selectedLayer:null,
+  compareRuns:{}, comparing:false,
+  quantBits:32, pruned:false,
+  actFn:'relu',
+  customLayers:null,
+  phaseIndex:0, phaseProgress:0,
+  phaseBannerTimer:0,
+  spotlightTimer:0, spotlight:null,
+  particlePool:[],
+  audioCtx:null,
+};
+const PHASES = ['FORWARD','BACKWARD','UPDATE'];
+const PHASE_DUR = 1.5;
+
+// ══════════════════════════════════════════════════════════
+//  NETWORK & DATASET DEFS
+// ══════════════════════════════════════════════════════════
+const NETS = {
+  mlp:{name:'MLP',layers:[3,8,6,4,2],type:'ff',desc:'Classic MLP with ReLU activations.'},
+  deep_mlp:{name:'Deep MLP',layers:[4,10,8,6,6,4,2],type:'ff',desc:'6 hidden layers. Watch for vanishing gradients!'},
+  wide_mlp:{name:'Wide MLP',layers:[4,20,20,2],type:'ff',desc:'Wide hidden layers.'},
+  cnn:{name:'CNN',layers:[4,8,6,4,2],type:'cnn',desc:'Conv→Pool→FC layers.'},
+  resnet:{name:'ResNet Block',layers:[4,8,8,4],type:'residual',desc:'Skip connections every 2 layers.'},
+  unet:{name:'U-Net',layers:[4,8,16,8,4],type:'unet',desc:'Encoder-decoder with skip connections.'},
+  rnn:{name:'RNN',layers:[3,6,6,2],type:'rnn',desc:'Vanilla RNN with recurrent weights.'},
+  lstm:{name:'LSTM',layers:[3,8,8,2],type:'lstm',desc:'Long Short-Term Memory: 4 gate matrices.'},
+  gru:{name:'GRU',layers:[3,7,7,2],type:'gru',desc:'Gated Recurrent Unit.'},
+  birnn:{name:'BiRNN',layers:[3,5,5,5,2],type:'birnn',desc:'Bidirectional RNN.'},
+  attention:{name:'Self-Attention',layers:[4,6,6,6,4],type:'attn',desc:'Q, K, V projections.'},
+  transformer:{name:'Transformer Enc',layers:[4,8,8,6,4],type:'transformer',desc:'MHA + FFN + LayerNorm.'},
+  gpt:{name:'GPT Decoder',layers:[6,8,8,8,6],type:'gpt',desc:'Causal masked self-attention.'},
+  bert:{name:'BERT Encoder',layers:[6,8,8,8,6],type:'bert',desc:'Bidirectional encoder.'},
+  mha:{name:'Multi-Head Attn',layers:[4,8,8,8,4],type:'mha',desc:'4 attention heads.'},
+  vae:{name:'VAE',layers:[6,10,4,4,10,6],type:'vae',desc:'Encoder→μ,σ→reparameterize→decoder.'},
+  gan:{name:'GAN Generator',layers:[2,6,10,8,6],type:'gan',desc:'Latent→generated sample.'},
+  diffusion:{name:'Diffusion U-Net',layers:[4,8,12,8,4],type:'diffusion',desc:'Score-matching denoiser.'},
+  autoencoder:{name:'Autoencoder',layers:[8,6,4,2,4,6,8],type:'ae',desc:'Symmetric encoder-decoder.'},
+  rbm:{name:'RBM',layers:[6,8,6],type:'rbm',desc:'Energy-based model with CD updates.'},
+  hopfield:{name:'Hopfield Net',layers:[6,6,6],type:'hopfield',desc:'All-to-all, energy minimization.'},
+};
+const DATASETS = {
+  xor:{name:'XOR',desc:'2 inputs → 2 classes.',inputDim:2,outputDim:2,task:'cls'},
+  iris:{name:'Iris',desc:'4 features → 3 species.',inputDim:4,outputDim:3,task:'cls'},
+  moons:{name:'Two Moons',desc:'2D crescent clusters.',inputDim:2,outputDim:2,task:'cls'},
+  spiral:{name:'Spiral',desc:'3-class spiral.',inputDim:2,outputDim:3,task:'cls'},
+  circles:{name:'Circles',desc:'Concentric circles.',inputDim:2,outputDim:2,task:'cls'},
+  mnist_sim:{name:'MNIST',desc:'28×28 digits → 10 classes.',inputDim:784,outputDim:10,task:'cls'},
+  cifar_sim:{name:'CIFAR-10',desc:'32×32 RGB → 10 classes.',inputDim:3072,outputDim:10,task:'cls'},
+  fashion_sim:{name:'Fashion MNIST',desc:'28×28 clothing → 10 classes.',inputDim:784,outputDim:10,task:'cls'},
+  sine_wave:{name:'Sine Wave',desc:'Predict next sin(t).',inputDim:10,outputDim:1,task:'reg'},
+  stock_sim:{name:'Time Series',desc:'Multi-step prediction.',inputDim:20,outputDim:5,task:'reg'},
+  copy_task:{name:'Copy Task',desc:'Memorize & reproduce.',inputDim:8,outputDim:8,task:'seq'},
+  char_lm:{name:'Char LM',desc:'Predict next char.',inputDim:64,outputDim:64,task:'lang'},
+  word_embed:{name:'Word Embeddings',desc:'Skip-gram word vectors.',inputDim:10000,outputDim:300,task:'embed'},
+  sentiment:{name:'Sentiment',desc:'Binary pos/neg.',inputDim:512,outputDim:2,task:'cls'},
+  causal_lm:{name:'Causal LM',desc:'GPT next-token prediction.',inputDim:2048,outputDim:2048,task:'lang'},
+  vae_data:{name:'VAE Dataset',desc:'2D point cloud.',inputDim:2,outputDim:2,task:'gen'},
+  gan_data:{name:'GAN Dataset',desc:'Real distribution.',inputDim:100,outputDim:2,task:'gen'},
+  diffusion_data:{name:'Diffusion',desc:'Noisy samples at timesteps.',inputDim:64,outputDim:64,task:'gen'},
+};
+const ARCH_TEMPLATES = [
+  {name:'LeNet',layers:[4,6,4,3,2]},{name:'AlexNet-sm',layers:[4,8,8,4,2]},
+  {name:'VGG-tiny',layers:[4,8,8,8,4,2]},{name:'2-Layer',layers:[2,4,2]},
+  {name:'Bottleneck',layers:[8,4,2,4,8]},{name:'Wide-Deep',layers:[2,16,16,2]},
+];
+
+// ══════════════════════════════════════════════════════════
+//  MATH / ML
+// ══════════════════════════════════════════════════════════
+const relu    = x=>Math.max(0,x);
+const gelu    = x=>0.5*x*(1+Math.tanh(Math.sqrt(2/Math.PI)*(x+0.044715*x**3)));
+const swish   = x=>x/(1+Math.exp(-x));
+const sigmoid = x=>1/(1+Math.exp(-x));
+const tanh    = x=>Math.tanh(x);
+const leaky   = x=>x>0?x:0.01*x;
+const elu     = x=>x>0?x:Math.exp(x)-1;
+const ACTS    = {relu,gelu,swish,tanh,sigmoid,leaky,elu};
+const ACT_DERIVS = {
+  relu:x=>x>0?1:0, gelu:x=>0.5*(1+Math.tanh(Math.sqrt(2/Math.PI)*(x+0.044715*x**3))),
+  swish:x=>{const sg=1/(1+Math.exp(-x));return sg*(1+x*(1-sg))},
+  tanh:x=>1-Math.tanh(x)**2, sigmoid:x=>{const s=1/(1+Math.exp(-x));return s*(1-s)},
+  leaky:x=>x>0?1:0.01, elu:x=>x>0?1:Math.exp(x),
+};
+function softmax(a){const mx=Math.max(...a),ex=a.map(v=>Math.exp(v-mx)),s=ex.reduce((a,b)=>a+b,0);return ex.map(v=>v/s)}
+function xavierInit(fi,fo){const s=Math.sqrt(2/(fi+fo));return Array.from({length:fo},()=>Array.from({length:fi},()=>(Math.random()*2-1)*s))}
+function initWeights(layers){
+  return layers.slice(0,-1).map((n,i)=>xavierInit(n,layers[i+1]));
+}
+function applyDropout(acts,rate){if(!rate)return acts;return acts.map(v=>Math.random()<rate?0:v/(1-rate))}
+function applyQuantization(w,bits){
+  if(bits===32)return w;
+  const levels=Math.pow(2,bits)-1;
+  const mn=Math.min(...w.flat().flat()),mx=Math.max(...w.flat().flat());
+  const range=mx-mn||1;
+  return w.map(l=>l.map(r=>r.map(v=>{const q=Math.round(((v-mn)/range)*levels)/levels*range+mn;return q})));
+}
+function forward(weights,input,actName='relu',dropRate=0,training=true){
+  const act=ACTS[actName]||relu;
+  const acts=[input.slice()];
+  let cur=input.slice();
+  for(let l=0;l<weights.length;l++){
+    let next=weights[l].map(row=>row.reduce((s,w,k)=>s+w*cur[k],0));
+    const isLast=l===weights.length-1;
+    next=next.map(v=>isLast?v:act(v));
+    if(!isLast&&training&&dropRate>0) next=applyDropout(next,dropRate);
+    acts.push(next); cur=next;
+  }
+  return acts;
+}
+function backward(weights,acts,target,lossType,actName='relu'){
+  const deriv=ACT_DERIVS[actName]||ACT_DERIVS.relu;
+  const grads=weights.map(w=>w.map(r=>r.map(()=>0)));
+  const L=weights.length;
+  const out=acts[L];
+  let delta=out.map((a,i)=>{
+    if(lossType==='mse')return a-(Array.isArray(target)?target[i]:0);
+    const t=Array.isArray(target)?target[i]:(i===target?1:0);
+    return a-t;
+  });
+  for(let l=L-1;l>=0;l--){
+    for(let j=0;j<weights[l].length;j++)
+      for(let k=0;k<weights[l][j].length;k++)
+        grads[l][j][k]=delta[j]*acts[l][k];
+    if(l>0){
+      const nd=acts[l].map((a,k)=>{
+        let d=0; for(let j=0;j<weights[l].length;j++) d+=weights[l][j][k]*delta[j];
+        return d*deriv(a);
+      });
+      delta=nd;
+    }
+  }
+  return grads;
+}
+
+// ── Optimizers ──
+const optState={m:[],v:[],t:0,vel:[]};
+function initOptState(w){
+  optState.m=w.map(l=>l.map(r=>r.map(()=>0)));
+  optState.v=w.map(l=>l.map(r=>r.map(()=>0)));
+  optState.vel=w.map(l=>l.map(r=>r.map(()=>0)));
+  optState.t=0;
+}
+function updateWeights(weights,grads,lr,optKey,l2=0,gc=0){
+  // Gradient clipping
+  if(gc>0){
+    let norm=0;
+    grads.forEach(l=>l.forEach(r=>r.forEach(g=>{norm+=g*g})));
+    norm=Math.sqrt(norm);
+    if(norm>gc){const scale=gc/norm; grads=grads.map(l=>l.map(r=>r.map(g=>g*scale)));}
+  }
+  // L2 regularization
+  if(l2>0) grads=grads.map((lg,li)=>lg.map((rg,ri)=>rg.map((g,ki)=>g+l2*weights[li][ri][ki])));
+
+  optState.t++;
+  const b1=0.9,b2=0.999,eps=1e-8;
+  let totalDelta=0;
+  weights.forEach((layer,li)=>layer.forEach((row,ri)=>row.forEach((w,ki)=>{
+    const g=grads[li][ri][ki];
+    let delta=0;
+    if(optKey==='sgd') delta=lr*g;
+    else if(optKey==='momentum'){optState.vel[li][ri][ki]=0.9*optState.vel[li][ri][ki]+lr*g;delta=optState.vel[li][ri][ki];}
+    else if(optKey==='adagrad'){optState.v[li][ri][ki]+=g*g;delta=lr*g/(Math.sqrt(optState.v[li][ri][ki])+eps);}
+    else if(optKey==='rmsprop'){optState.v[li][ri][ki]=0.9*optState.v[li][ri][ki]+0.1*g*g;delta=lr*g/(Math.sqrt(optState.v[li][ri][ki])+eps);}
+    else if(optKey==='nadam'){
+      optState.m[li][ri][ki]=b1*optState.m[li][ri][ki]+(1-b1)*g;
+      optState.v[li][ri][ki]=b2*optState.v[li][ri][ki]+(1-b2)*g*g;
+      const mH=optState.m[li][ri][ki]/(1-b1**optState.t);
+      const vH=optState.v[li][ri][ki]/(1-b2**optState.t);
+      const mNext=(b1*optState.m[li][ri][ki]+(1-b1)*g)/(1-b1**(optState.t+1));
+      delta=lr*mNext/(Math.sqrt(vH)+eps);
+    }
+    else if(optKey==='lion'){
+      const upd=Math.sign(b1*optState.m[li][ri][ki]+(1-b1)*g);
+      optState.m[li][ri][ki]=b2*optState.m[li][ri][ki]+(1-b2)*g;
+      delta=lr*upd;
+    }
+    else{ // adam / adamw
+      optState.m[li][ri][ki]=b1*optState.m[li][ri][ki]+(1-b1)*g;
+      optState.v[li][ri][ki]=b2*optState.v[li][ri][ki]+(1-b2)*g*g;
+      const mH=optState.m[li][ri][ki]/(1-b1**optState.t);
+      const vH=optState.v[li][ri][ki]/(1-b2**optState.t);
+      if(optKey==='adamw') weights[li][ri][ki]*=(1-lr*0.01);
+      delta=lr*mH/(Math.sqrt(vH)+eps);
+    }
+    weights[li][ri][ki]-=delta;
+    totalDelta+=Math.abs(delta);
+  })));
+  return {totalDelta,grads};
+}
+function getLRScheduled(baseLR,step,schedKey,totalSteps=500){
+  const t=step/totalSteps;
+  if(schedKey==='step') return baseLR*(Math.floor(t*5)<1?1:0.5**Math.floor(t*5));
+  if(schedKey==='cosine') return baseLR*0.5*(1+Math.cos(Math.PI*t));
+  if(schedKey==='warmup') return baseLR*Math.min(1,step/50);
+  if(schedKey==='exp') return baseLR*Math.exp(-3*t);
+  return baseLR;
+}
+function generateBatch(dsKey,batchSize){
+  const ds=DATASETS[dsKey];
+  const inD=Math.min(ds.inputDim,20),outD=Math.min(ds.outputDim,10);
+  const inputs=[],targets=[];
+  for(let i=0;i<batchSize;i++){
+    inputs.push(Array.from({length:inD},()=>Math.random()*2-1));
+    targets.push(ds.task==='reg'?Array.from({length:outD},()=>Math.random()*2-1):Math.floor(Math.random()*outD));
+  }
+  return{inputs,targets,inD,outD,task:ds.task};
+}
+
+// ══════════════════════════════════════════════════════════
+//  THREE.JS VISUALIZATION
+// ══════════════════════════════════════════════════════════
+const MAX_PART=250;
+function initParticles(){
+  S.particlePool.forEach(p=>{if(p.mesh)scene.remove(p.mesh)});
+  S.particlePool=[];
+  for(let i=0;i<MAX_PART;i++){
+    const g=new THREE.SphereGeometry(0.07,6,6);
+    const m=new THREE.MeshBasicMaterial({color:0x7b2dff,transparent:true,opacity:0.9});
+    const mesh=new THREE.Mesh(g,m);
+    mesh.visible=false; scene.add(mesh);
+    S.particlePool.push({mesh,active:false,t:0,from:new THREE.Vector3(),to:new THREE.Vector3(),speed:1});
+  }
+}
+initParticles();
+function spawnParticle(from,to,color){
+  const p=S.particlePool.find(p=>!p.active);if(!p)return;
+  p.active=true;p.t=0;p.from.copy(from);p.to.copy(to);
+  p.mesh.material.color.setHex(color);p.mesh.visible=true;
+  p.speed=0.5+Math.random()*0.5;
+}
+function updateParticles(dt){
+  S.particlePool.forEach(p=>{
+    if(!p.active)return;
+    p.t+=dt*p.speed*S.speed;
+    if(p.t>=1){p.active=false;p.mesh.visible=false;return;}
+    const e=p.t*p.t*(3-2*p.t);
+    p.mesh.position.lerpVectors(p.from,p.to,e);
+    p.mesh.material.opacity=Math.sin(p.t*Math.PI)*0.9;
+  });
+}
+
+function clearViz(){
+  while(vizGroup.children.length){
+    const c=vizGroup.children[0];
+    if(c.geometry)c.geometry.dispose();
+    if(c.material){if(Array.isArray(c.material))c.material.forEach(m=>m.dispose());else c.material.dispose();}
+    vizGroup.remove(c);
+  }
+  S.nodes=[];S.edges=[];
+}
+
+function buildNetwork(){
+  clearViz();
+  const layers=S.layerSizes;
+  if(!layers||!layers.length)return;
+  const dispLayers=layers.map(n=>Math.min(n,10));
+  const nL=dispLayers.length;
+  const xScale=Math.min(3.5,13/(nL-1||1));
+  S.nodes=dispLayers.map((n,li)=>{
+    const arr=[];
+    for(let ni=0;ni<n;ni++){
+      const x=(li-(nL-1)/2)*xScale;
+      const y=n>1?(ni-(n-1)/2)*(6/Math.max(n,5)):0;
+      let col=li===0?0x5599ff:li===nL-1?0x00ffe1:0x3a5878;
+      const nt=S.layerTypes[li];
+      if(nt==='lstm'||nt==='gru') col=0x9b5dff;
+      if(nt==='attn'||nt==='transformer'||nt==='gpt'||nt==='bert'||nt==='mha') col=0xff3cac;
+      if(nt==='conv') col=0x00ff88;
+      // frozen override
+      if(S.frozenLayers.has(li)) col=0xffb700;
+      const geo=new THREE.SphereGeometry(0.22,16,16);
+      const mat=new THREE.MeshPhongMaterial({color:col,emissive:col,emissiveIntensity:0.55,transparent:true,opacity:0.95,shininess:100});
+      const mesh=new THREE.Mesh(geo,mat);
+      mesh.position.set(x,y,0);
+      mesh.userData={layer:li,node:ni,baseColor:col,activation:0,dead:false};
+      vizGroup.add(mesh);arr.push(mesh);
+    }
+    return arr;
+  });
+
+  S.edges=[];
+  let edgeCount=0;
+  const MAX_E=600;
+  for(let l=0;l<nL-1;l++){
+    const fn=S.nodes[l],tn=S.nodes[l+1];
+    for(let fi=0;fi<fn.length&&edgeCount<MAX_E;fi++){
+      for(let ti=0;ti<tn.length&&edgeCount<MAX_E;ti++){
+        const w=S.weights[l]&&S.weights[l][ti]?S.weights[l][ti][fi]||0:0;
+        const col=w>=0?0x00ffe1:0xff4466;
+        const geo=new THREE.BufferGeometry().setFromPoints([fn[fi].position.clone(),tn[ti].position.clone()]);
+        const mat=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0.22});
+        const line=new THREE.Line(geo,mat);
+        line.userData={fromLayer:l,from:fi,to:ti};
+        vizGroup.add(line);S.edges.push(line);edgeCount++;
+      }
+    }
+    // Residual skip
+    if((S.layerTypes[l]==='residual'||NETS[document.getElementById('network-select').value]?.type==='residual')&&l+2<nL){
+      const pts=[fn[0].position.clone().add(new THREE.Vector3(0.1,0,0.4)),S.nodes[l+2][0].position.clone().add(new THREE.Vector3(-0.1,0,0.4))];
+      const geo=new THREE.BufferGeometry().setFromPoints(pts);
+      vizGroup.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xffb700,transparent:true,opacity:0.5})));
+    }
+    // Recurrent loops
+    if(['rnn','lstm','gru','birnn'].includes(S.layerTypes[l]||'')&&l>0&&l<nL-1){
+      for(let ni=0;ni<Math.min(2,fn.length);ni++){
+        const p=fn[ni].position.clone();
+        const curve=new THREE.QuadraticBezierCurve3(p,new THREE.Vector3(p.x+0.8,p.y+0.8,0),new THREE.Vector3(p.x,p.y+0.3,0));
+        const pts=curve.getPoints(12);
+        vizGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xff3cac,transparent:true,opacity:0.4})));
+      }
+    }
+  }
+  // Attention arcs
+  const netKey=document.getElementById('network-select').value;
+  if(['attn','transformer','gpt','bert','mha'].includes(NETS[netKey]?.type)){
+    const mid=S.nodes[Math.floor(nL/2)];
+    mid.forEach((a,ai)=>mid.forEach((b,bi)=>{
+      if(bi<=ai)return;
+      const mid3=a.position.clone().lerp(b.position,0.5).add(new THREE.Vector3(0.5,0,0.3));
+      const curve=new THREE.QuadraticBezierCurve3(a.position.clone(),mid3,b.position.clone());
+      vizGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(14)),new THREE.LineBasicMaterial({color:0xff3cac,transparent:true,opacity:0.18})));
+    }));
+  }
+  // Sprites / labels
+  S.nodes.forEach((layer,li)=>{
+    if(!layer.length)return;
+    const x=layer[0].position.x;
+    const y=layer[layer.length-1].position.y+0.6;
+    const c2=document.createElement('canvas'); c2.width=128;c2.height=32;
+    const cx=c2.getContext('2d');
+    cx.fillStyle='#00ffe1';cx.font='bold 13px monospace';cx.textAlign='center';
+    cx.fillText(li===0?'IN':li===nL-1?'OUT':`H${li}`,64,22);
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c2),transparent:true,opacity:0.7}));
+    sp.position.set(x,y,0); sp.scale.set(0.8,0.2,1); vizGroup.add(sp);
+  });
+
+  document.getElementById('sb-neurons').textContent=dispLayers.reduce((a,b)=>a+b,0);
+  document.getElementById('sb-conns').textContent=edgeCount;
+  updateLayerList();
+  updateFreezeList();
+  updateHUD();
+}
+
+// ══════════════════════════════════════════════════════════
+//  INIT NETWORK
+// ══════════════════════════════════════════════════════════
+function initNetwork(){
+  const key=document.getElementById('network-select').value;
+  const def=NETS[key];
+  if(!def)return;
+  const layers=S.customLayers||def.layers.map(n=>Math.min(n,12));
+  S.layerSizes=layers;
+  S.layerNames=layers.map((_,i)=>i===0?'INPUT':i===layers.length-1?'OUTPUT':`HIDDEN ${i}`);
+  S.layerTypes=layers.map((_,i)=>i===0?'input':i===layers.length-1?'output':def.type);
+  S.weights=initWeights(layers);
+  S.prevWeights=S.weights.map(l=>l.map(r=>r.slice()));
+  S.gradients=S.weights.map(l=>l.map(r=>r.map(()=>0)));
+  S.activations=layers.map(n=>Array(n).fill(0));
+  S.deadNeurons=layers.map(n=>Array(n).fill(0));
+  S.frozenLayers=new Set();
+  S.epoch=0;S.step=0;S.loss=null;
+  S.lossHist=[];S.accHist=[];S.gradNormHist=[];S.lrHist=[];
+  S.trainHistory=[];S.historyPtr=0;
+  S.spotlight=null;S.phaseIndex=0;S.phaseProgress=0;
+  S.compareRuns={};
+  initOptState(S.weights);
+  let params=0;
+  for(let i=0;i<layers.length-1;i++) params+=layers[i]*layers[i+1]+layers[i+1];
+  document.getElementById('s-params').textContent=params.toLocaleString();
+  const ds=DATASETS[document.getElementById('dataset-select').value];
+  document.getElementById('net-info').innerHTML=`TYPE:<span>${def.type.toUpperCase()}</span> LAYERS:<span>${layers.length}</span><br>ARCH:<span>${layers.join('→')}</span>`;
+  buildNetwork();
+  updateDsInfo();
+  drawLRPreview();
+}
+
+// ══════════════════════════════════════════════════════════
+//  TRAINING STEP
+// ══════════════════════════════════════════════════════════
+function trainStep(){
+  const key=document.getElementById('network-select').value;
+  const dsKey=document.getElementById('dataset-select').value;
+  const optKey=document.getElementById('opt-select').value;
+  const lossKey=document.getElementById('loss-select').value;
+  const schedKey=document.getElementById('sched-select').value;
+  const actKey=S.actFn;
+  const def=NETS[key];
+  if(!def||!S.weights.length){initNetwork();return;}
+
+  const effectiveLR=getLRScheduled(S.lr,S.step,schedKey);
+  const{inputs,targets,task}=generateBatch(dsKey,S.batchSize);
+  let totalLoss=0,totalGradNorm=0,correct=0;
+  const accGrads=S.weights.map(l=>l.map(r=>r.map(()=>0)));
+
+  for(let b=0;b<inputs.length;b++){
+    const netIn=inputs[b].slice(0,def.layers[0]).concat(Array(Math.max(0,def.layers[0]-inputs[b].length)).fill(0));
+    const acts=forward(S.weights,netIn,actKey,S.dropout,true);
+    S.activations=acts;
+    const out=acts[acts.length-1];
+    let target,loss;
+    if(task==='reg'){
+      const tgt=targets[b].slice(0,def.layers[def.layers.length-1]).concat(Array(Math.max(0,def.layers[def.layers.length-1]-targets[b].length)).fill(0));
+      loss=out.reduce((s,v,i)=>s+(v-tgt[i])**2,0)/out.length;
+      target=tgt;
+    } else {
+      const probs=softmax(out),tgt=targets[b]%out.length;
+      loss=-Math.log(probs[tgt]+1e-8);target=tgt;
+      if(out.indexOf(Math.max(...out))===tgt)correct++;
+    }
+    totalLoss+=loss;
+    const grads=backward(S.weights,acts,target,task==='reg'?'mse':'ce',actKey);
+    grads.forEach((lg,li)=>lg.forEach((rg,ri)=>rg.forEach((g,ki)=>accGrads[li][ri][ki]+=g)));
+    grads.forEach(lg=>lg.forEach(rg=>rg.forEach(g=>{totalGradNorm+=g*g})));
+  }
+  const n=inputs.length;
+  accGrads.forEach(lg=>lg.forEach(rg=>rg.forEach((_,ki,arr)=>arr[ki]/=n)));
+  S.gradients=accGrads;
+  S.prevWeights=S.weights.map(l=>l.map(r=>r.slice()));
+
+  // Skip frozen layers
+  const frozenGrads=accGrads.map((lg,li)=>S.frozenLayers.has(li)?lg.map(r=>r.map(()=>0)):lg);
+  const{totalDelta}=updateWeights(S.weights,frozenGrads,effectiveLR,optKey,S.l2,S.gradClip);
+
+  // Track dead neurons (ReLU neurons that never fire)
+  S.activations.forEach((layerActs,li)=>layerActs.forEach((a,ni)=>{
+    if(a<=0) S.deadNeurons[li][ni]=(S.deadNeurons[li][ni]||0)+1;
+    else S.deadNeurons[li][ni]=0;
+  }));
+
+  const avgLoss=totalLoss/n;
+  const acc=task!=='reg'?(correct/n*100):null;
+  S.loss=avgLoss;
+  S.lossHist.push(avgLoss);
+  S.accHist.push(acc||0);
+  S.gradNormHist.push(Math.sqrt(totalGradNorm/n));
+  S.lrHist.push(effectiveLR);
+  if(S.lossHist.length>150){S.lossHist.shift();S.accHist.shift();S.gradNormHist.shift();S.lrHist.shift();}
+  S.step++;
+  if(S.step%10===0)S.epoch++;
+
+  // Save history snapshot
+  if(S.step%5===0){
+    S.trainHistory.push({step:S.step,loss:avgLoss,acc:acc||0,weights:S.weights.map(l=>l.map(r=>r.slice()))});
+    if(S.trainHistory.length>60)S.trainHistory.shift();
+    S.historyPtr=S.trainHistory.length-1;
+  }
+
+  // Optimizer compare
+  if(S.comparing){
+    const{inputs:ci,targets:ct,task:ctask}=generateBatch(dsKey,16);
+    ['adam','sgd','rmsprop'].forEach(opt=>{
+      if(!S.compareRuns[opt])S.compareRuns[opt]={weights:initWeights(S.layerSizes),hist:[],state:{m:[],v:[],vel:[],t:0}};
+      const run=S.compareRuns[opt];
+      const ni2=ci[0].slice(0,S.layerSizes[0]).concat(Array(Math.max(0,S.layerSizes[0]-ci[0].length)).fill(0));
+      const a2=forward(run.weights,ni2,actKey,0,false);
+      const probs=softmax(a2[a2.length-1]),tgt2=ct[0]%a2[a2.length-1].length;
+      run.hist.push(-Math.log(probs[tgt2]+1e-8));
+      if(run.hist.length>80)run.hist.shift();
+      const g2=backward(run.weights,a2,tgt2,'ce',actKey);
+      updateWeights(run.weights,g2,S.lr,opt);
+    });
+  }
+
+  // Update UI
+  document.getElementById('s-epoch').textContent=S.epoch;
+  document.getElementById('s-step').textContent=S.step;
+  document.getElementById('s-loss').textContent=avgLoss.toFixed(4);
+  document.getElementById('s-acc').textContent=acc!==null?acc.toFixed(1)+'%':'N/A';
+  document.getElementById('s-grad').textContent=Math.sqrt(totalGradNorm/n).toFixed(4);
+  document.getElementById('s-delta').textContent=totalDelta.toFixed(5);
+  document.getElementById('s-elr').textContent=effectiveLR.toExponential(2);
+  document.getElementById('hud-epoch').textContent=`EPOCH ${S.epoch} | STEP ${S.step}`;
+  document.getElementById('hud-lr').textContent=`LR: ${effectiveLR.toExponential(2)}`;
+
+  // Gradient clipping indicator
+  if(S.gradClip>0&&Math.sqrt(totalGradNorm/n)>S.gradClip)
+    document.getElementById('sb-status').textContent='CLIPPING GRADS';
+
+  // Early stopping check
+  if(S.lossHist.length>20){
+    const recent=S.lossHist.slice(-10);
+    const delta=recent[0]-recent[recent.length-1];
+    if(Math.abs(delta)<0.0001&&S.running){
+      document.getElementById('sb-status').textContent='CONVERGED';
+    }
+  }
+
+  updateCharts();
+  updateGradHealth();
+  updateDeadNeurons();
+  updateParamEff(avgLoss,acc);
+  updateActHistograms();
+  if(task==='cls'&&acc!==null)updateConfMatrix(acc);
+  playAudioFeedback(avgLoss);
+  updateTimeline();
+}
+
+// ══════════════════════════════════════════════════════════
+//  VISUAL UPDATES
+// ══════════════════════════════════════════════════════════
+let pTimer=0;
+function maybeSpawnParticles(dt){
+  pTimer+=dt; if(pTimer<0.04/S.speed)return; pTimer=0;
+  const phase=PHASES[S.phaseIndex],t=S.phaseProgress;
+  if(phase==='FORWARD'){
+    const l=Math.min(Math.floor(t*(S.nodes.length-1)),S.nodes.length-2);
+    const fl=S.nodes[l],tl=S.nodes[l+1];
+    if(fl&&tl){const fi=Math.floor(Math.random()*fl.length),ti=Math.floor(Math.random()*tl.length);if(fl[fi]&&tl[ti])spawnParticle(fl[fi].position,tl[ti].position,0x9b5dff);}
+  } else if(phase==='BACKWARD'){
+    const l=Math.min(Math.floor((1-t)*(S.nodes.length-1)),S.nodes.length-2);
+    const fl=S.nodes[l+1],tl=S.nodes[l];
+    if(fl&&tl){const fi=Math.floor(Math.random()*fl.length),ti=Math.floor(Math.random()*tl.length);if(fl[fi]&&tl[ti])spawnParticle(fl[fi].position,tl[ti].position,0xffb700);}
+  } else if(phase==='UPDATE'){
+    const l=Math.floor(Math.random()*S.nodes.length);
+    const layer=S.nodes[l];
+    if(layer&&layer.length){const ni=Math.floor(Math.random()*layer.length);if(layer[ni])spawnParticle(layer[ni].position,layer[ni].position.clone().add(new THREE.Vector3((Math.random()-.5)*.6,(Math.random()-.5)*.6,.3)),0x00ffe1);}
+  }
+}
+function updateEdges(){
+  const phase=PHASES[S.phaseIndex],t=S.phaseProgress;
+  S.edges.forEach(e=>{
+    const{fromLayer,from,to}=e.userData;
+    if(fromLayer>=S.weights.length)return;
+    const w=S.weights[fromLayer][to]?S.weights[fromLayer][to][from]||0:0;
+    const g=S.gradients[fromLayer]&&S.gradients[fromLayer][to]?S.gradients[fromLayer][to][from]||0:0;
+    let op=0.1,col;
+    // Pruned
+    if(S.pruned&&Math.abs(w)<S.pruneThresh){e.material.opacity=0.01;return;}
+    if(phase==='FORWARD'&&S.showAct){
+      const a=S.activations[fromLayer]?S.activations[fromLayer][from]||0:0;
+      const str=Math.min(1,Math.abs(a));op=0.05+str*.5*t;
+      col=new THREE.Color(w>=0?0:str*t,str*.9*t,w>=0?str*.7*t:0.2*t);col.addScalar(.05);
+    } else if(phase==='BACKWARD'&&S.showGrad){
+      const absG=Math.min(1,Math.abs(g)*50);op=0.05+absG*.6*t;
+      col=new THREE.Color(absG*t,absG*.5*t,0);
+    } else if(phase==='UPDATE'){
+      const absW=Math.min(1,Math.abs(w)*2);op=0.05+absW*.5;
+      col=w>=0?new THREE.Color(0,absW*.9,absW*.7):new THREE.Color(absW*.9,.1,.2);
+    } else {
+      const absW=Math.min(1,Math.abs(w)*2);op=0.04+absW*.2;
+      if(S.heatmap) col=heatmapColor(w);
+      else col=w>=0?new THREE.Color(0,absW*.5,absW*.4):new THREE.Color(absW*.5,.05,.1);
+    }
+    // Quantization preview
+    if(S.quantBits<32){const q=1/(Math.pow(2,S.quantBits)/2);op=Math.min(.9,op+q*.3);}
+    e.material.opacity=Math.max(.01,Math.min(.9,op));
+    if(col)e.material.color.set(col);
+  });
+}
+function heatmapColor(v){
+  const t=(v+1)/2;
+  if(t<0.5){const f=t*2;return new THREE.Color(0,f*.3,f*.8+.1);}
+  else{const f=(t-.5)*2;return new THREE.Color(f*.9,f*.3,0.9*(1-f));}
+}
+function updateNodes(){
+  const phase=PHASES[S.phaseIndex],t=S.phaseProgress;
+  S.nodes.forEach((layer,li)=>{
+    const acts=S.activations[li]||[];
+    layer.forEach((node,ni)=>{
+      const act=acts[ni]||0,absAct=Math.min(1,Math.abs(act));
+      const isDead=S.showDead&&(S.deadNeurons[li]&&S.deadNeurons[li][ni]>30);
+      const isFrozen=S.frozenLayers.has(li);
+      let emissive,scale=1;
+      if(isDead){emissive=new THREE.Color(.15,.15,.15);scale=0.7;}
+      else if(isFrozen){emissive=new THREE.Color(.5,.4,0);scale=1;}
+      else if(S.heatmap){emissive=heatmapColor(act);scale=1+absAct*.3;}
+      else if(phase==='FORWARD'){
+        emissive=li===0?new THREE.Color(.1,.2,.8*(1-t*.4)):new THREE.Color(absAct*.15*t,absAct*t,absAct*.6*t);
+        scale=1+absAct*.4*t;
+      } else if(phase==='BACKWARD'){
+        const g=S.gradients[li]&&S.gradients[li][ni]?Math.abs(S.gradients[li][ni][0]||0):0;
+        const gn=Math.min(1,g*20);emissive=new THREE.Color(gn*t,gn*.5*t,0);scale=1+gn*.3*t;
+      } else if(phase==='UPDATE'){
+        emissive=li===S.nodes.length-1?new THREE.Color(0,.8,.6):new THREE.Color(.1,.3+absAct*.5,.3);scale=1+absAct*.2;
+      } else {
+        emissive=new THREE.Color(node.userData.baseColor);emissive.multiplyScalar(.4);
+      }
+      node.material.emissive=emissive||new THREE.Color(0,0,0);
+      node.material.emissiveIntensity=isDead?.1:Math.max(.2,absAct*.9);
+      node.scale.setScalar(Math.max(.5,Math.min(1.9,scale)));
+      // Dropout dim
+      if(S.dropout>0&&Math.random()<S.dropout*.1)node.material.opacity=.3;
+      else node.material.opacity=.95;
+      // Highlight selected node
+      if(S.selectedNode&&S.selectedNode.layer===li&&S.selectedNode.node===ni)
+        node.material.emissiveIntensity=1.5;
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  OVERLAY DRAWING
+// ══════════════════════════════════════════════════════════
+function proj(worldPos){
+  const v=worldPos.clone();v.project(camera);
+  return{x:(v.x*.5+.5)*overlayC.width,y:(-v.y*.5+.5)*overlayC.height,behind:v.z>1};
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
+  ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+}
+let spotTimer=0;
+const phaseBanner=document.getElementById('phase-banner');
+function drawOverlay(dt){
+  overlayCtx.clearRect(0,0,overlayC.width,overlayC.height);
+  if(!S.nodes.length||!S.weights.length)return;
+  const phase=PHASES[S.phaseIndex],t=S.phaseProgress;
+  // Phase banner
+  if(S.phaseBannerTimer>0){S.phaseBannerTimer-=dt;if(S.phaseBannerTimer<=0)phaseBanner.className='';}
+  if(!S.showWNum)return;
+  const MAX_LABELS=30;let drawn=0;
+  const ctx=overlayCtx;
+  // FORWARD: activation values on nodes
+  if(phase==='FORWARD'&&S.showAct){
+    const al=Math.min(Math.floor(t*S.nodes.length),S.nodes.length-1);
+    for(let li=0;li<=al&&drawn<MAX_LABELS;li++){
+      S.nodes[li].forEach((nd,ni)=>{
+        const a=S.activations[li]?S.activations[li][ni]||0:0;
+        const sc=proj(nd.position);if(sc.behind)return;
+        const alpha=li===al?t:.7;
+        drawNodeLbl(ctx,sc.x,sc.y,a.toFixed(3),a>=0?'#00ffe1':'#ff4466',alpha);drawn++;
+      });
+    }
+    S.edges.forEach(e=>{
+      if(drawn>=MAX_LABELS)return;
+      const{fromLayer,from,to}=e.userData;
+      if(fromLayer!==al-1)return;
+      const w=S.weights[fromLayer]&&S.weights[fromLayer][to]?S.weights[fromLayer][to][from]||0:0;
+      const fn=S.nodes[fromLayer]&&S.nodes[fromLayer][from];
+      const tn=S.nodes[fromLayer+1]&&S.nodes[fromLayer+1][to];
+      if(!fn||!tn)return;
+      const sc=proj(fn.position.clone().lerp(tn.position,.5));if(sc.behind)return;
+      drawEdgeLbl(ctx,sc.x,sc.y,`w=${w.toFixed(3)}`,w>=0?'#5599ff88':'#ff446688',t);drawn++;
+    });
+  }
+  // BACKWARD: gradient values
+  if(phase==='BACKWARD'&&S.showGrad){
+    const bl=S.nodes.length-1-Math.min(Math.floor(t*S.nodes.length),S.nodes.length-1);
+    for(let li=bl;li<S.nodes.length&&drawn<MAX_LABELS;li++){
+      S.nodes[li].forEach((nd,ni)=>{
+        const sc=proj(nd.position);if(sc.behind)return;
+        const g=S.gradients[li]&&S.gradients[li][ni]?S.gradients[li][ni][0]||0:0;
+        const alpha=li===bl?t:.6;
+        drawNodeLbl(ctx,sc.x,sc.y,`∂=${g.toFixed(4)}`,'#ffb700',alpha,true);drawn++;
+      });
+    }
+    S.edges.forEach(e=>{
+      if(drawn>=MAX_LABELS)return;
+      const{fromLayer,from,to}=e.userData;
+      if(fromLayer!==bl)return;
+      const g=S.gradients[fromLayer]&&S.gradients[fromLayer][to]?S.gradients[fromLayer][to][from]||0:0;
+      const fn=S.nodes[fromLayer]&&S.nodes[fromLayer][from];
+      const tn=S.nodes[fromLayer+1]&&S.nodes[fromLayer+1][to];
+      if(!fn||!tn)return;
+      const sc=proj(fn.position.clone().lerp(tn.position,.52));if(sc.behind)return;
+      drawEdgeLbl(ctx,sc.x,sc.y,`∇=${g.toFixed(4)}`,Math.abs(g)>.01?'#ffb700cc':'#ffb70044',t);drawn++;
+    });
+  }
+  // UPDATE: old→new weight animation
+  if(phase==='UPDATE'){
+    const tL=S.weights.length;
+    const al=Math.min(Math.floor(t*tL),tL-1);
+    if(spotTimer<=0){pickSpotlight();spotTimer=1.8;} spotTimer-=dt;
+    S.edges.forEach(e=>{
+      if(drawn>=MAX_LABELS)return;
+      const{fromLayer,from,to}=e.userData;
+      if(fromLayer!==al)return;
+      const newW=S.weights[fromLayer][to]?S.weights[fromLayer][to][from]||0:0;
+      const oldW=S.prevWeights[fromLayer]&&S.prevWeights[fromLayer][to]?S.prevWeights[fromLayer][to][from]||0:newW;
+      const grad=S.gradients[fromLayer]&&S.gradients[fromLayer][to]?S.gradients[fromLayer][to][from]||0:0;
+      const delta=newW-oldW;
+      const fn=S.nodes[fromLayer]&&S.nodes[fromLayer][from];
+      const tn=S.nodes[fromLayer+1]&&S.nodes[fromLayer+1][to];
+      if(!fn||!tn)return;
+      const frac=(t*tL)-fromLayer;
+      const sc=proj(fn.position.clone().lerp(tn.position,.38+(from%3)*.07));if(sc.behind)return;
+      drawWeightUpdate(ctx,sc.x,sc.y,oldW,newW,delta,grad,frac);drawn++;
+    });
+    // Spotlight highlight
+    if(S.spotlight){
+      const{l,j,k}=S.spotlight;
+      const fn2=S.nodes[l]&&S.nodes[l][k];
+      const tn2=S.nodes[l+1]&&S.nodes[l+1][j];
+      if(fn2&&tn2){
+        const s1=proj(fn2.position),s2=proj(tn2.position);
+        ctx.beginPath();ctx.moveTo(s1.x,s1.y);ctx.lineTo(s2.x,s2.y);
+        ctx.strokeStyle='#00ffe155';ctx.lineWidth=3;ctx.stroke();
+      }
+    }
+    updateWeightDetail();
+  }
+  // Selected node connections highlight
+  if(S.selectedNode){
+    const{layer,node}=S.selectedNode;
+    S.edges.forEach(e=>{
+      const{fromLayer,from,to}=e.userData;
+      if(fromLayer===layer&&from===node||fromLayer===layer-1&&to===node){
+        const fn=S.nodes[fromLayer]&&S.nodes[fromLayer][from];
+        const tn=S.nodes[fromLayer+1]&&S.nodes[fromLayer+1][to];
+        if(fn&&tn){
+          const s1=proj(fn.position),s2=proj(tn.position);
+          ctx.beginPath();ctx.moveTo(s1.x,s1.y);ctx.lineTo(s2.x,s2.y);
+          ctx.strokeStyle='#00ffe188';ctx.lineWidth=2.5;ctx.stroke();
+        }
+      }
+    });
+  }
+  // Draw user points
+  if(S.drawnPoints.length&&S.showAct){
+    S.drawnPoints.forEach(p=>{
+      ctx.beginPath();ctx.arc(p.sx,p.sy,4,0,Math.PI*2);
+      ctx.fillStyle=p.label===0?'#00ffe1':'#ff3cac';ctx.fill();
+    });
+  }
+}
+function drawNodeLbl(ctx,x,y,text,color,alpha,above){
+  ctx.save();ctx.globalAlpha=Math.min(1,alpha);ctx.font='bold 9px "Share Tech Mono",monospace';ctx.textAlign='center';
+  const tw=ctx.measureText(text).width,py=above?y-22:y+20;
+  ctx.fillStyle='#0e1e30cc';roundRect(ctx,x-tw/2-4,py-9,tw+8,14,3);ctx.fill();
+  ctx.fillStyle=color;ctx.fillText(text,x,py);ctx.restore();
+}
+function drawEdgeLbl(ctx,x,y,text,color,alpha){
+  ctx.save();ctx.globalAlpha=Math.min(.9,alpha*.85);ctx.font='8px "Share Tech Mono",monospace';ctx.textAlign='center';
+  const tw=ctx.measureText(text).width;
+  ctx.fillStyle='#0a182888';roundRect(ctx,x-tw/2-3,y-7,tw+6,12,2);ctx.fill();
+  ctx.fillStyle=color;ctx.fillText(text,x,y+1);ctx.restore();
+}
+function drawWeightUpdate(ctx,x,y,oldW,newW,delta,grad,frac){
+  const alpha=Math.min(1,frac*2);if(alpha<.05)return;
+  ctx.save();ctx.globalAlpha=alpha;
+  const oldS=(oldW>=0?'+':'')+oldW.toFixed(3);
+  const newS=(newW>=0?'+':'')+newW.toFixed(3);
+  const dS=(delta>=0?'+':'')+delta.toFixed(4);
+  const gS='∇'+(grad>=0?'+':'')+grad.toFixed(3);
+  const disp=oldW+delta*Math.min(1,frac*1.5);
+  const dispS=(disp>=0?'+':'')+disp.toFixed(3);
+  const bW=118,bH=44;
+  ctx.fillStyle='#0c1a2af0';ctx.strokeStyle=delta>0?'#ff446660':'#00ffe160';ctx.lineWidth=1;
+  roundRect(ctx,x-bW/2,y-bH/2-4,bW,bH,4);ctx.fill();ctx.stroke();
+  ctx.font='bold 10px "Share Tech Mono",monospace';ctx.textAlign='left';
+  ctx.fillStyle=oldW>=0?'#5599ff':'#ff4466';ctx.fillText(oldS,x-bW/2+5,y-6);
+  ctx.fillStyle='#4a6a8a';ctx.textAlign='center';ctx.fillText('→',x,y-6);
+  ctx.fillStyle=Math.abs(newW)<Math.abs(oldW)?'#00ff88':'#ff9900';ctx.textAlign='right';ctx.fillText(dispS,x+bW/2-5,y-6);
+  ctx.font='8px "Share Tech Mono",monospace';
+  ctx.textAlign='left';ctx.fillStyle='#ffb700';ctx.fillText(gS,x-bW/2+5,y+8);
+  ctx.textAlign='right';ctx.fillStyle=delta<0?'#00ffe1':'#ff4466';ctx.fillText('Δ'+dS,x+bW/2-5,y+8);
+  const bx=x-bW/2+5,bw2=bW-10;
+  ctx.fillStyle='#1a2e48';roundRect(ctx,bx,y+15,bw2,3,2);ctx.fill();
+  ctx.fillStyle=delta<0?'#00ffe1':'#ff4466';roundRect(ctx,bx,y+15,bw2*Math.min(1,frac),3,2);ctx.fill();
+  ctx.restore();
+}
+function pickSpotlight(){
+  if(!S.weights.length)return;
+  const l=Math.floor(Math.random()*S.weights.length);
+  const j=Math.floor(Math.random()*S.weights[l].length);
+  const k=Math.floor(Math.random()*S.weights[l][j].length);
+  const oldW=S.prevWeights[l]&&S.prevWeights[l][j]?S.prevWeights[l][j][k]:S.weights[l][j][k];
+  S.spotlight={l,j,k,oldW,newW:S.weights[l][j][k],grad:S.gradients[l]&&S.gradients[l][j]?S.gradients[l][j][k]||0:0,delta:S.weights[l][j][k]-oldW};
+}
+function updateWeightDetail(){
+  const sp=S.spotlight;if(!sp){document.getElementById('weight-detail').style.display='none';return;}
+  document.getElementById('weight-detail').style.display='flex';
+  const{l,j,k,oldW,newW,grad,delta}=sp;
+  const optKey=document.getElementById('opt-select').value;
+  const f=optKey==='adam'||optKey==='adamw'?'w ← w − lr·m̂/(√v̂+ε)':optKey==='momentum'?'v←βv+lr·∇; w←w-v':'w ← w − lr × ∂L/∂w';
+  document.getElementById('wd-lw').textContent=`L${l+1} W[${j}][${k}]`;
+  const oldEl=document.getElementById('wd-old');oldEl.textContent=(oldW>=0?'+':'')+oldW.toFixed(5);oldEl.className='wd-v '+(oldW>=0?'c-cyan':'c-red');
+  document.getElementById('wd-g').textContent=(grad>=0?'+':'')+grad.toFixed(5);
+  document.getElementById('wd-f').textContent=f;
+  document.getElementById('wd-d').textContent=(delta>=0?'+':'')+delta.toFixed(6);
+  const newEl=document.getElementById('wd-n');newEl.textContent=(newW>=0?'+':'')+newW.toFixed(5);newEl.className='wd-v '+(newW>=0?'c-green':'c-red');
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHARTS
+// ══════════════════════════════════════════════════════════
+function drawChart(canvasId,data,color,label,showZero){
+  const c=document.getElementById(canvasId);if(!c)return;
+  const ctx=c.getContext('2d'),W=c.offsetWidth,H=c.offsetHeight;
+  c.width=W;c.height=H;ctx.fillStyle='#1a2e48';ctx.fillRect(0,0,W,H);
+  if(data.length<2)return;
+  const mx=Math.max(...data)*1.1,mn=Math.min(...data)*.9,range=mx-mn||1;
+  ctx.strokeStyle='#2a4060';ctx.lineWidth=1;
+  for(let g=0;g<=3;g++){const y=H-(g/3)*H;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  if(showZero){const zy=H-((0-mn)/range)*H*.9-H*.05;ctx.strokeStyle='#3a5878';ctx.setLineDash([2,2]);ctx.beginPath();ctx.moveTo(0,zy);ctx.lineTo(W,zy);ctx.stroke();ctx.setLineDash([]);}
+  const grad=ctx.createLinearGradient(0,0,0,H);grad.addColorStop(0,color+'40');grad.addColorStop(1,color+'05');
+  ctx.beginPath();ctx.moveTo(0,H);
+  data.forEach((v,i)=>{const x=i/(data.length-1)*W,y=H-((v-mn)/range)*H*.9-H*.05;i===0?ctx.lineTo(x,y):ctx.lineTo(x,y)});
+  ctx.lineTo(W,H);ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.shadowColor=color;ctx.shadowBlur=4;
+  data.forEach((v,i)=>{const x=i/(data.length-1)*W,y=H-((v-mn)/range)*H*.9-H*.05;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+  ctx.stroke();ctx.shadowBlur=0;
+  if(label){ctx.fillStyle=color;ctx.font='9px Share Tech Mono';ctx.fillText(label+': '+data[data.length-1].toFixed(4),4,12);}
+}
+function updateCharts(){
+  drawChart('loss-chart',S.lossHist,'#ffb700','LOSS');
+  drawChart('acc-chart',S.accHist.map(a=>a/100),'#00ff88','ACC');
+  drawChart('grad-flow-chart',S.gradNormHist,'#ff3cac','|∇|');
+  drawWeightDist();
+  drawOptCompare();
+  drawLRPreview();
+}
+function drawWeightDist(){
+  const c=document.getElementById('wdist-chart');if(!c)return;
+  const ctx=c.getContext('2d'),W=c.offsetWidth,H=c.offsetHeight;
+  c.width=W;c.height=H;ctx.fillStyle='#1a2e48';ctx.fillRect(0,0,W,H);
+  if(!S.weights.length)return;
+  const all=[];S.weights.forEach(l=>l.forEach(r=>r.forEach(w=>all.push(w))));
+  const bins=30,mn=Math.min(...all),mx=Math.max(...all),range=mx-mn||1;
+  const hist=Array(bins).fill(0);all.forEach(w=>{hist[Math.min(bins-1,Math.floor(((w-mn)/range)*bins))]++;});
+  const maxH=Math.max(...hist),bW=W/bins;
+  hist.forEach((cnt,i)=>{const h=(cnt/maxH)*(H-4),t=i/bins;ctx.fillStyle=`rgb(${Math.floor(t*200)},${Math.floor((1-t)*150)},200)`;ctx.fillRect(i*bW,H-h,bW-1,h);});
+  const zx=((0-mn)/range)*W;ctx.strokeStyle='#00ffe1';ctx.lineWidth=1;ctx.setLineDash([2,2]);ctx.beginPath();ctx.moveTo(zx,0);ctx.lineTo(zx,H);ctx.stroke();ctx.setLineDash([]);
+}
+function drawOptCompare(){
+  const c=document.getElementById('opt-compare-chart');if(!c||!S.comparing)return;
+  const ctx=c.getContext('2d'),W=c.offsetWidth,H=c.offsetHeight;
+  c.width=W;c.height=H;ctx.fillStyle='#1a2e48';ctx.fillRect(0,0,W,H);
+  const colors={'adam':'#00ffe1','sgd':'#ff3cac','rmsprop':'#ffb700'};
+  let allVals=[];
+  Object.values(S.compareRuns).forEach(r=>{allVals=allVals.concat(r.hist)});
+  if(allVals.length<2)return;
+  const mx=Math.max(...allVals)*1.1,mn=Math.min(...allVals)*.9,range=mx-mn||1;
+  Object.entries(S.compareRuns).forEach(([opt,run])=>{
+    if(run.hist.length<2)return;
+    ctx.beginPath();ctx.strokeStyle=colors[opt]||'#fff';ctx.lineWidth=1.5;
+    run.hist.forEach((v,i)=>{const x=i/(run.hist.length-1)*W,y=H-((v-mn)/range)*H*.9-H*.05;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+    ctx.stroke();
+    ctx.fillStyle=colors[opt]||'#fff';ctx.font='8px Share Tech Mono';ctx.fillText(opt,4+Object.keys(S.compareRuns).indexOf(opt)*50,H-4);
+  });
+}
+function drawLRPreview(){
+  const c=document.getElementById('lr-chart');if(!c)return;
+  const ctx=c.getContext('2d'),W=c.offsetWidth,H=c.offsetHeight;
+  c.width=W;c.height=H;ctx.fillStyle='#1a2e48';ctx.fillRect(0,0,W,H);
+  const schedKey=document.getElementById('sched-select').value;
+  const pts=Array.from({length:100},(_,i)=>getLRScheduled(S.lr,i*5,schedKey));
+  const mx=Math.max(...pts)||1;
+  ctx.beginPath();ctx.strokeStyle='#9b5dff';ctx.lineWidth=1.5;
+  pts.forEach((v,i)=>{const x=i/99*W,y=H-(v/mx)*H*.9-4;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+  ctx.stroke();
+  if(S.step){const sx=Math.min(99,(S.step/500)*100);const px=sx/99*W;ctx.strokeStyle='#00ffe1';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,H);ctx.stroke();}
+  ctx.fillStyle='#9b5dff';ctx.font='8px Share Tech Mono';ctx.fillText(`LR SCHEDULE: ${schedKey.toUpperCase()}`,4,10);
+}
+function updateGradHealth(){
+  const el=document.getElementById('grad-health-list');if(!el||!S.gradNormHist.length)return;
+  const norm=S.gradNormHist[S.gradNormHist.length-1];
+  const isVanishing=norm<0.001;const isExploding=norm>10;
+  const status=isVanishing?'VANISHING':isExploding?'EXPLODING':'HEALTHY';
+  const color=isVanishing?'#ff4466':isExploding?'#ffb700':'#00ff88';
+  const fillPct=Math.min(100,Math.max(1,(Math.log10(norm+1e-6)+6)/7*100));
+  el.innerHTML=`<div class="info-text">GRAD NORM: <span style="color:${color}">${norm.toFixed(4)}</span> — <span style="color:${color}">${status}</span></div><div class="health-bar"><div class="health-fill" style="width:${fillPct}%;background:${color}"></div></div>`;
+  S.nodes.forEach((_,li)=>{
+    const bar=document.getElementById(`lb-${li}`);
+    if(bar){const gn=S.gradients[li]?S.gradients[li].flat().reduce((s,v)=>s+Math.abs(v||0),0):0;bar.style.width=Math.min(100,gn*100)+'%';}
+  });
+}
+function updateDeadNeurons(){
+  const el=document.getElementById('dead-neuron-info');if(!el)return;
+  let deadCount=0,total=0;
+  S.deadNeurons.forEach((layer,li)=>{if(li===0||li===S.deadNeurons.length-1)return;layer.forEach(cnt=>{if(cnt>30)deadCount++;total++;});});
+  const pct=total?((deadCount/total)*100).toFixed(1):0;
+  el.innerHTML=`Dead neurons: <span style="color:${deadCount>total*.3?'#ff4466':deadCount>0?'#ffb700':'#00ff88'}">${deadCount}/${total} (${pct}%)</span><br>Threshold: 30+ consecutive zero activations.`;
+}
+function updateConfMatrix(acc){
+  const el=document.getElementById('conf-matrix');if(!el)return;
+  const dsKey=document.getElementById('dataset-select').value;
+  const ds=DATASETS[dsKey];
+  const n=Math.min(4,ds.outputDim);
+  el.style.gridTemplateColumns=`repeat(${n+1},1fr)`;el.innerHTML='';
+  // Header
+  el.innerHTML+='<div class="cm-cell" style="color:var(--dim);font-size:8px">P→</div>';
+  for(let j=0;j<n;j++) el.innerHTML+=`<div class="cm-cell" style="color:var(--a3);font-size:8px">C${j}</div>`;
+  for(let i=0;i<n;i++){
+    el.innerHTML+=`<div class="cm-cell" style="color:var(--a3);font-size:8px">C${i}</div>`;
+    for(let j=0;j<n;j++){
+      const isD=i===j;const v=isD?Math.round((acc/100)*100+Math.random()*5):Math.floor(Math.random()*15);
+      const bg=isD?`rgba(0,255,136,${.1+v/200})`:`rgba(255,68,102,${.05+v/400})`;
+      el.innerHTML+=`<div class="cm-cell" style="background:${bg};color:var(--text)">${v}</div>`;
+    }
+  }
+}
+function updateActHistograms(){
+  const el=document.getElementById('act-hist-list');if(!el)return;
+  if(!S.activations.length)return;
+  el.innerHTML='';
+  S.activations.forEach((layerActs,li)=>{
+    if(!layerActs.length)return;
+    const c=document.createElement('canvas');c.width=el.offsetWidth||240;c.height=30;
+    const ctx=c.getContext('2d'),W=c.width,H=c.height;
+    c.style.display='block';c.style.marginBottom='4px';
+    ctx.fillStyle='#1a2e48';ctx.fillRect(0,0,W,H);
+    const bins=16,mn=Math.min(...layerActs),mx=Math.max(...layerActs),range=mx-mn||1;
+    const hist=Array(bins).fill(0);layerActs.forEach(v=>hist[Math.min(bins-1,Math.floor(((v-mn)/range)*bins))]++);
+    const maxH=Math.max(...hist)||1,bW=W/bins;
+    hist.forEach((cnt,i)=>{const h=(cnt/maxH)*(H-2);ctx.fillStyle=li===0?'#5599ff':li===S.nodes.length-1?'#00ffe1':'#9b5dff';ctx.fillRect(i*bW,H-h,bW-1,h);});
+    ctx.fillStyle='var(--dim)';ctx.font='7px Share Tech Mono';ctx.fillText(`L${li} (${layerActs.length}n)`,2,8);
+    el.appendChild(c);
+  });
+}
+function updateParamEff(loss,acc){
+  const el=document.getElementById('param-eff');if(!el)return;
+  const params=parseInt(document.getElementById('s-params').textContent.replace(/,/g,''))||1;
+  const efficiency=acc?((acc/100)/(Math.log10(params+1))).toFixed(3):'N/A';
+  el.innerHTML=`TOTAL PARAMS: <span>${params.toLocaleString()}</span><br>EFF SCORE (acc/logP): <span style="color:${acc?'#00ff88':'var(--dim)'}">${efficiency}</span><br>BITS @ FP32: <span>${(params*4/1024).toFixed(1)} KB</span><br>BITS @ INT8: <span>${(params/1024).toFixed(1)} KB</span>`;
+}
+function updateLayerList(){
+  const el=document.getElementById('layer-act-list');if(!el)return;el.innerHTML='';
+  S.layerSizes.forEach((n,li)=>{
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-family:"Share Tech Mono",monospace;font-size:9px;color:var(--dim)';
+    const name=S.layerNames[li]||`L${li}`;
+    div.innerHTML=`<span style="width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span><div style="flex:1;height:2px;background:var(--border);border-radius:2px;overflow:hidden"><div id="lb-${li}" style="height:100%;background:var(--a1);width:0%;transition:width .3s;box-shadow:0 0 3px var(--a1)"></div></div><span style="width:24px;text-align:right;color:var(--a1)">${n}</span>`;
+    el.appendChild(div);
+  });
+}
+function updateFreezeList(){
+  const el=document.getElementById('freeze-list');if(!el)return;el.innerHTML='';
+  S.layerSizes.forEach((_,li)=>{
+    const div=document.createElement('div');div.className='toggle-row';
+    div.innerHTML=`<span class="toggle-label">${S.layerNames[li]||`LAYER ${li}`}</span><label class="toggle-sw"><input type="checkbox" class="freeze-cb" data-layer="${li}"${S.frozenLayers.has(li)?' checked':''}><div class="toggle-track"><div class="toggle-thumb"></div></div></label>`;
+    div.querySelector('.freeze-cb').addEventListener('change',e=>{
+      const l=parseInt(e.target.dataset.layer);
+      if(e.target.checked)S.frozenLayers.add(l);else S.frozenLayers.delete(l);
+      buildNetwork();
+    });
+    el.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  ARCH BUILDER
+// ══════════════════════════════════════════════════════════
+function renderArchBuilder(){
+  const el=document.getElementById('layer-builder');if(!el)return;el.innerHTML='';
+  S.layerSizes.forEach((n,li)=>{
+    const div=document.createElement('div');div.className='layer-chip';div.dataset.idx=li;
+    if(S.selectedLayer===li)div.classList.add('selected');
+    const isFrz=S.frozenLayers.has(li);
+    div.innerHTML=`<span class="lc-type ${isFrz?'lc-frozen':''}">${S.layerNames[li]||`L${li}`}</span><span class="lc-info">${n} neurons ${S.layerTypes[li]?'['+S.layerTypes[li]+']':''}</span><span class="lc-act">${S.actFn}</span><span class="lc-del" data-idx="${li}">✕</span>`;
+    div.querySelector('.lc-del').addEventListener('click',e=>{e.stopPropagation();if(S.layerSizes.length<=2)return;S.customLayers=S.layerSizes.filter((_,i)=>i!==li);initNetwork();});
+    div.addEventListener('click',()=>{S.selectedLayer=li;renderArchBuilder();showNodeDetail(null);});
+    el.appendChild(div);
+  });
+  // Templates
+  const tpl=document.getElementById('arch-templates');if(tpl){tpl.innerHTML='';ARCH_TEMPLATES.forEach(t=>{const b=document.createElement('button');b.className='btn btn-purple tag tag-purple';b.textContent=t.name;b.style.cssText='cursor:pointer;margin:2px';b.onclick=()=>{S.customLayers=t.layers;initNetwork();};tpl.appendChild(b);});}
+}
+document.getElementById('btn-add-layer').addEventListener('click',()=>{
+  const type=document.getElementById('add-layer-type').value;
+  const size=parseInt(document.getElementById('add-layer-size').value)||8;
+  const ins=S.layerSizes.length-1;
+  S.customLayers=S.layerSizes.slice();S.customLayers.splice(ins,0,size);
+  initNetwork();
+});
+document.getElementById('btn-save-arch').addEventListener('click',()=>{
+  const data=JSON.stringify({layers:S.layerSizes,actFn:S.actFn});
+  const a=document.createElement('a');a.href='data:text/json;charset=utf-8,'+encodeURIComponent(data);
+  a.download='neuroviz_arch.json';a.click();
+});
+document.getElementById('btn-load-arch').addEventListener('click',()=>{
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.layers){S.customLayers=d.layers;if(d.actFn){S.actFn=d.actFn;document.getElementById('act-select').value=d.actFn;}initNetwork();}}catch(ex){alert('Invalid arch JSON');}};r.readAsText(f);};inp.click();
+});
+document.getElementById('btn-clear-arch').addEventListener('click',()=>{S.customLayers=null;initNetwork();});
+
+// ══════════════════════════════════════════════════════════
+//  CAMERA CONTROLS
+// ══════════════════════════════════════════════════════════
+const cam={theta:0,phi:Math.PI/2,radius:18,panX:0,panY:0,isDragging:false,isPanning:false,lastX:0,lastY:0,tV:0,pV:0,rV:0,pxV:0,pyV:0,minR:4,maxR:60,
+  apply(){
+    const sp=Math.sin(this.phi),cp=Math.cos(this.phi),st=Math.sin(this.theta),ct=Math.cos(this.theta);
+    camera.position.set(this.panX+this.radius*sp*st,this.panY+this.radius*cp,this.radius*sp*ct);
+    camera.lookAt(this.panX,this.panY,0);
+  },
+  reset(){this.theta=0;this.phi=Math.PI/2;this.radius=18;this.panX=0;this.panY=0;this.tV=0;this.pV=0;this.rV=0;this.pxV=0;this.pyV=0;this.apply();},
+  update(dt){const d=Math.pow(.04,dt);this.theta+=this.tV*dt;this.tV*=d;this.phi=Math.max(.05,Math.min(Math.PI-.05,this.phi+this.pV*dt));this.pV*=d;this.radius=Math.max(this.minR,Math.min(this.maxR,this.radius+this.rV*dt));this.rV*=d;this.panX+=this.pxV*dt;this.pxV*=d;this.panY+=this.pyV*dt;this.pyV*=d;this.apply();}
+};
+cam.apply();
+rightPanel.addEventListener('mousedown',e=>{if(e.button===2)return;cam.isDragging=true;cam.isPanning=e.shiftKey||e.button===1;cam.lastX=e.clientX;cam.lastY=e.clientY;rightPanel.classList.add(cam.isPanning?'panning':'dragging');e.preventDefault();});
+window.addEventListener('mousemove',e=>{
+  const rect=rightPanel.getBoundingClientRect();
+  mouse.x=((e.clientX-rect.left)/rect.width)*2-1;mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+  const hits=raycaster.intersectObjects(S.nodes.flat());
+  if(hits.length>0&&!cam.isDragging){
+    const{layer,node}=hits[0].object.userData;
+    const act=S.activations[layer]?S.activations[layer][node]||0:0;
+    const grad=S.gradients[layer]&&S.gradients[layer][node]?S.gradients[layer][node][0]||0:0;
+    tooltip.style.display='block';tooltip.style.left=(e.clientX-rect.left+14)+'px';tooltip.style.top=(e.clientY-rect.top-44)+'px';
+    tooltip.innerHTML=`${S.layerNames[layer]||'L'+layer}·N${node}<br>ACT: ${act.toFixed(4)}<br>GRAD: ${grad.toFixed(5)}<br>${S.frozenLayers.has(layer)?'🔒 FROZEN':''} ${S.deadNeurons[layer]&&S.deadNeurons[layer][node]>30?'☠ DEAD':''}`;
+  } else if(!cam.isDragging) tooltip.style.display='none';
+  if(!cam.isDragging)return;
+  const dx=e.clientX-cam.lastX,dy=e.clientY-cam.lastY;cam.lastX=e.clientX;cam.lastY=e.clientY;
+  if(cam.isPanning||e.shiftKey){cam.panX+=dx*cam.radius*-0.0012;cam.panY+=dy*cam.radius*0.0012;}
+  else{cam.theta-=dx*.007;cam.phi=Math.max(.05,Math.min(Math.PI-.05,cam.phi-dy*.007));cam.tV=-dx*.007*8;cam.pV=-dy*.007*8;}
+  cam.apply();
+});
+window.addEventListener('mouseup',()=>{cam.isDragging=false;cam.isPanning=false;rightPanel.classList.remove('dragging','panning');});
+rightPanel.addEventListener('wheel',e=>{e.preventDefault();const d=e.deltaY*.0012*cam.radius;cam.radius=Math.max(cam.minR,Math.min(cam.maxR,cam.radius+d));cam.rV=d*4;cam.apply();},{passive:false});
+rightPanel.addEventListener('dblclick',()=>cam.reset());
+rightPanel.addEventListener('click',e=>{
+  if(cam.isDragging)return;
+  const rect=rightPanel.getBoundingClientRect();
+  mouse.x=((e.clientX-rect.left)/rect.width)*2-1;mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+  const hits=raycaster.intersectObjects(S.nodes.flat());
+  if(hits.length>0){showNodeDetail(hits[0].object.userData);}
+  else if(S.drawMode){
+    S.drawnPoints.push({sx:e.clientX-rect.left,sy:e.clientY-rect.top,label:Math.floor(Math.random()*2)});
+  }
+});
+// Touch
+rightPanel.addEventListener('touchstart',e=>{cam.isDragging=true;cam.lastX=e.touches[0].clientX;cam.lastY=e.touches[0].clientY;if(e.touches.length===2){cam.isDragging=false;const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;cam._pinch=Math.sqrt(dx*dx+dy*dy);}e.preventDefault();},{passive:false});
+rightPanel.addEventListener('touchmove',e=>{
+  if(e.touches.length===1&&cam.isDragging){const dx=e.touches[0].clientX-cam.lastX,dy=e.touches[0].clientY-cam.lastY;cam.lastX=e.touches[0].clientX;cam.lastY=e.touches[0].clientY;cam.theta-=dx*.007;cam.phi=Math.max(.05,Math.min(Math.PI-.05,cam.phi-dy*.007));cam.apply();}
+  if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY,d=Math.sqrt(dx*dx+dy*dy),delta=(cam._pinch-d)*.04;cam.radius=Math.max(cam.minR,Math.min(cam.maxR,cam.radius+delta));cam._pinch=d;cam.apply();}
+  e.preventDefault();},{passive:false});
+rightPanel.addEventListener('touchend',()=>{cam.isDragging=false;});
+
+// ══════════════════════════════════════════════════════════
+//  NODE DETAIL PANEL
+// ══════════════════════════════════════════════════════════
+function showNodeDetail(userData){
+  const el=document.getElementById('node-detail');
+  if(!userData){el.style.display='none';S.selectedNode=null;return;}
+  S.selectedNode=userData;el.style.display='block';
+  const{layer,node}=userData;
+  const act=S.activations[layer]?S.activations[layer][node]||0:0;
+  const grad=S.gradients[layer]&&S.gradients[layer][node]?S.gradients[layer][node][0]||0:0;
+  const inDeg=S.weights[layer-1]?S.weights[layer-1].length:0;
+  const isDead=S.deadNeurons[layer]&&S.deadNeurons[layer][node]>30;
+  const isFrozen=S.frozenLayers.has(layer);
+  let avgW=0;
+  if(S.weights[layer-1]&&S.weights[layer-1][node]){const wl=S.weights[layer-1][node];avgW=wl.reduce((s,w)=>s+Math.abs(w),0)/wl.length;}
+  document.getElementById('nd-title').textContent=`${S.layerNames[layer]||'L'+layer} · N${node}`;
+  document.getElementById('nd-act').textContent=act.toFixed(5);
+  document.getElementById('nd-grad').textContent=grad.toFixed(5);
+  document.getElementById('nd-indeg').textContent=inDeg;
+  document.getElementById('nd-dead').textContent=isDead?'YES':'NO';
+  document.getElementById('nd-frozen').textContent=isFrozen?'YES':'NO';
+  document.getElementById('nd-avgw').textContent=avgW.toFixed(5);
+  // Mini activation history chart
+  const c=document.getElementById('nd-act-chart');const cx=c.getContext('2d');
+  cx.fillStyle='#1a2e48';cx.fillRect(0,0,c.width,c.height);
+  const hist=S.lossHist.slice(-20);if(hist.length>1){cx.beginPath();cx.strokeStyle='#00ffe1';cx.lineWidth=1.5;hist.forEach((v,i)=>{const x=i/(hist.length-1)*c.width,y=c.height-v/Math.max(...hist)*c.height*.9-2;i===0?cx.moveTo(x,y):cx.lineTo(x,y)});cx.stroke();}
+}
+document.getElementById('node-close').addEventListener('click',()=>showNodeDetail(null));
+
+// ══════════════════════════════════════════════════════════
+//  WEIGHT MATRIX VIEWER
+// ══════════════════════════════════════════════════════════
+function showMatrixViewer(layerIdx){
+  const el=document.getElementById('matrix-viewer');
+  if(!S.weights[layerIdx]){el.style.display='none';return;}
+  el.style.display='block';
+  const W=S.weights[layerIdx];
+  document.getElementById('mv-title').textContent=`L${layerIdx}→L${layerIdx+1} WEIGHTS`;
+  document.getElementById('mv-info').textContent=`${W.length}×${W[0].length}  [rows=out, cols=in]`;
+  const c=document.getElementById('mv-canvas');
+  const cols=W[0].length,rows=W.length;
+  const cw=Math.min(240,cols*10),ch=Math.min(160,rows*10);
+  c.width=cw;c.height=ch;const ctx=c.getContext('2d');
+  const cSize=Math.floor(Math.min(cw/cols,ch/rows));
+  const mn=Math.min(...W.flat()),mx=Math.max(...W.flat()),range=mx-mn||1;
+  W.forEach((row,ri)=>row.forEach((w,ci)=>{
+    const t=(w-mn)/range;let r2,g2,b2;
+    if(t<.5){const f=t*2;r2=0;g2=Math.floor(f*100);b2=Math.floor(200+f*55);}
+    else{const f=(t-.5)*2;r2=Math.floor(f*200);g2=Math.floor(100*(1-f));b2=Math.floor(255*(1-f));}
+    ctx.fillStyle=`rgb(${r2},${g2},${b2})`;ctx.fillRect(ci*cSize,ri*cSize,cSize-1,cSize-1);
+  }));
+}
+document.getElementById('mv-close').addEventListener('click',()=>{document.getElementById('matrix-viewer').style.display='none';});
+
+// ══════════════════════════════════════════════════════════
+//  ATTENTION VIEWER
+// ══════════════════════════════════════════════════════════
+function showAttentionViewer(){
+  const el=document.getElementById('attn-viewer');
+  const netKey=document.getElementById('network-select').value;
+  if(!['attention','transformer','gpt','bert','mha'].includes(netKey)){el.style.display='none';return;}
+  el.style.display='block';
+  const n=Math.min(8,S.layerSizes[1]||4);
+  const c=document.getElementById('av-canvas');c.width=n*20;c.height=n*20;
+  const ctx=c.getContext('2d');
+  // Simulate attention scores
+  const scores=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>{
+    const base=Math.exp(-Math.abs(i-j)*0.5);
+    const causal=netKey==='gpt'&&j>i?0:base;
+    return causal*(0.5+Math.random()*.5);
+  }));
+  scores.forEach((row,ri)=>{
+    const sum=row.reduce((a,b)=>a+b,0)||1;
+    row.forEach((v,ci)=>{
+      const a=v/sum,alpha=Math.min(1,a*2);
+      ctx.fillStyle=`rgba(255,60,172,${alpha})`;ctx.fillRect(ci*20,ri*20,19,19);
+      ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='7px monospace';ctx.textAlign='center';ctx.fillText(a.toFixed(1),ci*20+10,ri*20+12);
+    });
+  });
+  ctx.strokeStyle='#ff3cac44';for(let i=0;i<=n;i++){ctx.beginPath();ctx.moveTo(i*20,0);ctx.lineTo(i*20,n*20);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i*20);ctx.lineTo(n*20,i*20);ctx.stroke();}
+}
+document.getElementById('av-close').addEventListener('click',()=>{document.getElementById('attn-viewer').style.display='none';});
+
+// ══════════════════════════════════════════════════════════
+//  TIMELINE SCRUBBER
+// ══════════════════════════════════════════════════════════
+function updateTimeline(){
+  const total=S.trainHistory.length;
+  const ptr=S.historyPtr;
+  const pct=total>1?ptr/(total-1)*100:0;
+  document.getElementById('tl-fill').style.width=pct+'%';
+  document.getElementById('tl-thumb').style.left=pct+'%';
+  document.getElementById('tl-step-info').textContent=`STEP ${S.trainHistory[ptr]?.step||0} / ${S.trainHistory[total-1]?.step||0}`;
+}
+function goToHistoryFrame(idx){
+  const h=S.trainHistory[idx];if(!h)return;
+  S.historyPtr=idx;S.weights=h.weights.map(l=>l.map(r=>r.slice()));
+  buildNetwork();updateTimeline();
+}
+const tlScrub=document.getElementById('tl-scrubber');
+tlScrub.addEventListener('click',e=>{const rect=tlScrub.getBoundingClientRect();const t=(e.clientX-rect.left)/rect.width;const idx=Math.floor(t*(S.trainHistory.length-1));goToHistoryFrame(Math.max(0,Math.min(S.trainHistory.length-1,idx)));});
+document.getElementById('tl-start').addEventListener('click',()=>goToHistoryFrame(0));
+document.getElementById('tl-end').addEventListener('click',()=>goToHistoryFrame(S.trainHistory.length-1));
+document.getElementById('tl-prev').addEventListener('click',()=>goToHistoryFrame(Math.max(0,S.historyPtr-1)));
+document.getElementById('tl-next').addEventListener('click',()=>goToHistoryFrame(Math.min(S.trainHistory.length-1,S.historyPtr+1)));
+
+// ══════════════════════════════════════════════════════════
+//  AUDIO FEEDBACK
+// ══════════════════════════════════════════════════════════
+function initAudioCtx(){if(S.audioCtx)return;try{S.audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+function playAudioFeedback(loss){
+  if(!S.audio||!document.getElementById('tog-audio').checked)return;
+  initAudioCtx();if(!S.audioCtx)return;
+  const freq=200+Math.max(0,Math.min(1,(1-Math.min(loss,5)/5))*600);
+  const osc=S.audioCtx.createOscillator();
+  const gain=S.audioCtx.createGain();
+  osc.connect(gain);gain.connect(S.audioCtx.destination);
+  osc.frequency.value=freq;osc.type='sine';
+  gain.gain.setValueAtTime(0.03,S.audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001,S.audioCtx.currentTime+0.15);
+  osc.start();osc.stop(S.audioCtx.currentTime+0.15);
+  // Convergence alarm
+  if(S.lossHist.length>10&&Math.abs(S.lossHist[S.lossHist.length-1]-S.lossHist[S.lossHist.length-10])<0.0001){
+    const alarm=S.audioCtx.createOscillator();const ag=S.audioCtx.createGain();
+    alarm.connect(ag);ag.connect(S.audioCtx.destination);alarm.frequency.value=880;alarm.type='square';
+    ag.gain.setValueAtTime(0.05,S.audioCtx.currentTime);ag.gain.exponentialRampToValueAtTime(0.0001,S.audioCtx.currentTime+0.3);
+    alarm.start();alarm.stop(S.audioCtx.currentTime+0.3);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════════════════════════
+document.getElementById('btn-export-png').addEventListener('click',()=>{
+  renderer.render(scene,camera);const url=canvas3d.toDataURL('image/png');
+  const a=document.createElement('a');a.href=url;a.download='neuroviz_screenshot.png';a.click();
+});
+document.getElementById('btn-export-csv').addEventListener('click',()=>{
+  const rows=['step,loss,accuracy,gradNorm,lr'];
+  S.lossHist.forEach((l,i)=>rows.push(`${i+1},${l.toFixed(6)},${(S.accHist[i]||0).toFixed(2)},${(S.gradNormHist[i]||0).toFixed(6)},${(S.lrHist[i]||S.lr).toFixed(6)}`));
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.join('\n'));a.download='neuroviz_metrics.csv';a.click();
+});
+document.getElementById('btn-export-arch').addEventListener('click',()=>{
+  const data=JSON.stringify({layers:S.layerSizes,types:S.layerTypes,actFn:S.actFn,params:parseInt(document.getElementById('s-params').textContent.replace(/,/g,''))},null,2);
+  const a=document.createElement('a');a.href='data:text/json;charset=utf-8,'+encodeURIComponent(data);a.download='neuroviz_arch.json';a.click();
+});
+document.getElementById('btn-share').addEventListener('click',()=>{
+  const params=new URLSearchParams({net:document.getElementById('network-select').value,ds:document.getElementById('dataset-select').value,opt:document.getElementById('opt-select').value,lr:S.lr,bs:S.batchSize});
+  const url=window.location.href.split('?')[0]+'?'+params.toString();
+  navigator.clipboard.writeText(url).then(()=>{const b=document.getElementById('btn-share');b.textContent='✅ COPIED!';setTimeout(()=>b.textContent='🔗 COPY SHARE URL',2000);});
+});
+
+// ══════════════════════════════════════════════════════════
+//  PRUNING & QUANTIZATION
+// ══════════════════════════════════════════════════════════
+document.getElementById('btn-prune').addEventListener('click',()=>{
+  const thresh=S.pruneThresh;let pruned=0;
+  S.weights.forEach(l=>l.forEach(r=>r.forEach((w,i,arr)=>{if(Math.abs(w)<thresh){arr[i]=0;pruned++;}})));
+  S.pruned=true;buildNetwork();
+  document.getElementById('dead-neuron-info').innerHTML=`Pruned <span style="color:var(--a4)">${pruned}</span> weights below |${thresh}|. Connections now greyed out.`;
+});
+document.getElementById('btn-quant').addEventListener('click',()=>{
+  const bits=parseInt(document.getElementById('quant-select').value);S.quantBits=bits;
+  if(bits<32){const orig=S.weights.map(l=>l.map(r=>r.reduce((s,w)=>s+Math.abs(w),0)/r.length));S.weights=applyQuantization(S.weights,bits);const loss=S.weights.map((l,li)=>l.map((r,ri)=>r.reduce((s,w)=>s+Math.abs(w-orig[li][ri]),0)));const totErr=loss.flat().reduce((s,v)=>s+v,0);document.getElementById('quant-info').innerHTML=`Quantized to <span style="color:var(--a3)">INT${bits}</span>. Approx error: <span style="color:var(--a4)">${totErr.toFixed(4)}</span>. Size: <span style="color:var(--a5)">${(S.weights.flat().flat().length*bits/8/1024).toFixed(2)} KB</span>`;}
+  else{document.getElementById('quant-info').textContent='FP32 — full precision.';}
+  buildNetwork();
+});
+
+// ══════════════════════════════════════════════════════════
+//  ANNOTATIONS
+// ══════════════════════════════════════════════════════════
+const ANN_COLORS=['#00ffe1','#ff3cac','#ffb700','#00ff88','#9b5dff','#ff4466'];
+function renderAnnotations(){
+  const el=document.getElementById('ann-list');if(!el)return;el.innerHTML='';
+  S.annotations.forEach((ann,i)=>{
+    const div=document.createElement('div');div.className='ann-item';
+    div.innerHTML=`<div class="ann-color" style="background:${ann.color}"></div><div class="ann-text">${ann.text}</div><div class="ann-del" data-i="${i}">✕</div>`;
+    div.querySelector('.ann-del').addEventListener('click',e=>{S.annotations.splice(parseInt(e.target.dataset.i),1);renderAnnotations();});
+    el.appendChild(div);
+  });
+}
+document.getElementById('btn-add-ann').addEventListener('click',()=>{
+  const t=document.getElementById('ann-input').value.trim();if(!t)return;
+  S.annotations.push({text:t,color:ANN_COLORS[S.annotations.length%ANN_COLORS.length]});
+  document.getElementById('ann-input').value='';renderAnnotations();
+});
+
+// Noise injection
+document.getElementById('btn-inject-noise').addEventListener('click',()=>{
+  S.weights.forEach(l=>l.forEach(r=>r.forEach((_,i,arr)=>{arr[i]+=(Math.random()*2-1)*S.noiseScale;})));
+  buildNetwork();
+  document.getElementById('sb-status').textContent='NOISE INJECTED';setTimeout(()=>document.getElementById('sb-status').textContent='TRAINING',1500);
+});
+
+// Draw mode
+document.getElementById('tog-draw').addEventListener('change',e=>{
+  S.drawMode=e.target.checked;drawC.style.display=S.drawMode?'block':'none';
+});
+document.getElementById('btn-clear-draw').addEventListener('click',()=>{S.drawnPoints=[];drawCtx.clearRect(0,0,drawC.width,drawC.height);});
+
+// ══════════════════════════════════════════════════════════
+//  THEME
+// ══════════════════════════════════════════════════════════
+document.getElementById('tog-theme').addEventListener('change',e=>{
+  if(e.target.checked){
+    document.documentElement.style.setProperty('--bg','#edf2f7');
+    document.documentElement.style.setProperty('--panel','#f7fafc');
+    document.documentElement.style.setProperty('--panel2','#fff');
+    document.documentElement.style.setProperty('--border','#cbd5e0');
+    document.documentElement.style.setProperty('--text','#1a202c');
+    document.documentElement.style.setProperty('--dim','#718096');
+    document.documentElement.style.setProperty('--dim2','#a0aec0');
+    renderer.setClearColor(0xedf2f7,1);scene.fog=new THREE.FogExp2(0xedf2f7,0.016);
+  } else {
+    document.documentElement.style.setProperty('--bg','#111d2e');
+    document.documentElement.style.setProperty('--panel','#172235');
+    document.documentElement.style.setProperty('--panel2','#1a2840');
+    document.documentElement.style.setProperty('--border','#2a4060');
+    document.documentElement.style.setProperty('--text','#dff0ff');
+    document.documentElement.style.setProperty('--dim','#7a9aba');
+    document.documentElement.style.setProperty('--dim2','#4a6a8a');
+    renderer.setClearColor(0x111d2e,1);scene.fog=new THREE.FogExp2(0x111d2e,0.016);
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+//  CONTROL BUTTONS & SLIDERS
+// ══════════════════════════════════════════════════════════
+function setRunning(v){
+  S.running=v;const dot=document.getElementById('sb-dot');const st=document.getElementById('sb-status');
+  if(v){dot.classList.add('active');st.textContent='TRAINING';document.getElementById('btn-play').classList.add('pulse');}
+  else{dot.classList.remove('active');st.textContent='PAUSED';document.getElementById('btn-play').classList.remove('pulse');}
+}
+document.getElementById('btn-play').addEventListener('click',()=>{if(!S.weights.length)initNetwork();setRunning(true);});
+document.getElementById('btn-pause').addEventListener('click',()=>setRunning(false));
+document.getElementById('btn-step').addEventListener('click',()=>{if(!S.weights.length)initNetwork();trainStep();S.phaseIndex=(S.phaseIndex+1)%PHASES.length;S.phaseProgress=0;updateCharts();});
+document.getElementById('btn-reset').addEventListener('click',()=>{setRunning(false);S.customLayers=null;initNetwork();});
+
+document.getElementById('lr-sl').addEventListener('input',e=>{S.lr=Math.pow(10,parseFloat(e.target.value));document.getElementById('lr-val').textContent=S.lr.toFixed(4);drawLRPreview();});
+document.getElementById('bs-sl').addEventListener('input',e=>{const s=[1,4,8,16,32,64];S.batchSize=s[parseInt(e.target.value)-1]||32;document.getElementById('bs-val').textContent=S.batchSize;});
+document.getElementById('sp-sl').addEventListener('input',e=>{S.speed=parseFloat(e.target.value);document.getElementById('sp-val').textContent=S.speed.toFixed(1)+'×';});
+document.getElementById('do-sl').addEventListener('input',e=>{S.dropout=parseFloat(e.target.value);document.getElementById('do-val').textContent=S.dropout.toFixed(2);});
+document.getElementById('l2-sl').addEventListener('input',e=>{S.l2=parseFloat(e.target.value);document.getElementById('l2-val').textContent=S.l2.toFixed(3);});
+document.getElementById('gc-sl').addEventListener('input',e=>{S.gradClip=parseFloat(e.target.value);document.getElementById('gc-val').textContent=S.gradClip>0?S.gradClip.toFixed(1):'OFF';});
+document.getElementById('noise-sl').addEventListener('input',e=>{S.noiseScale=parseFloat(e.target.value);document.getElementById('noise-val').textContent=S.noiseScale.toFixed(2);});
+document.getElementById('prune-sl').addEventListener('input',e=>{S.pruneThresh=parseFloat(e.target.value);document.getElementById('prune-val').textContent=S.pruneThresh.toFixed(2);});
+document.getElementById('tog-grad').addEventListener('change',e=>S.showGrad=e.target.checked);
+document.getElementById('tog-act').addEventListener('change',e=>S.showAct=e.target.checked);
+document.getElementById('tog-wnum').addEventListener('change',e=>S.showWNum=e.target.checked);
+document.getElementById('tog-heat').addEventListener('change',e=>S.heatmap=e.target.checked);
+document.getElementById('tog-dead').addEventListener('change',e=>S.showDead=e.target.checked);
+document.getElementById('tog-3d').addEventListener('change',e=>{if(e.target.checked)cam.tV=0.3;});
+document.getElementById('tog-audio').addEventListener('change',e=>{S.audio=e.target.checked;document.getElementById('audio-indicator').style.display=e.target.checked?'block':'none';initAudioCtx();});
+document.getElementById('act-select').addEventListener('change',e=>{S.actFn=e.target.value;});
+document.getElementById('network-select').addEventListener('change',()=>{setRunning(false);S.customLayers=null;initNetwork();});
+document.getElementById('dataset-select').addEventListener('change',()=>updateDsInfo());
+document.getElementById('sched-select').addEventListener('change',()=>drawLRPreview());
+document.getElementById('btn-start-compare').addEventListener('click',()=>{S.comparing=true;S.compareRuns={};});
+document.getElementById('btn-stop-compare').addEventListener('click',()=>{S.comparing=false;S.compareRuns={};const c=document.getElementById('opt-compare-chart');if(c){const ctx=c.getContext('2d');ctx.fillStyle='#1a2e48';ctx.fillRect(0,0,c.width,c.height);}});
+
+// Tabs
+document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('tab-'+t.dataset.tab).classList.add('active');if(t.dataset.tab==='arch')renderArchBuilder();});});
+
+// Keyboard shortcuts
+window.addEventListener('keydown',e=>{
+  if(document.activeElement&&['SELECT','INPUT'].includes(document.activeElement.tagName))return;
+  if(e.key===' '){e.preventDefault();S.running?setRunning(false):setRunning(true);}
+  if(e.key==='n'||e.key==='N'){if(!S.weights.length)initNetwork();trainStep();S.phaseIndex=(S.phaseIndex+1)%PHASES.length;S.phaseProgress=0;}
+  if(e.key==='r'||e.key==='R'){setRunning(false);S.customLayers=null;initNetwork();}
+  if(e.key==='h'||e.key==='H'){S.heatmap=!S.heatmap;document.getElementById('tog-heat').checked=S.heatmap;}
+  if(e.key==='a'||e.key==='A')showAttentionViewer();
+  if(e.key==='m'||e.key==='M')showMatrixViewer(Math.min(1,S.weights.length-1));
+  if(e.key==='+')cam.radius=Math.max(cam.minR,cam.radius-cam.radius*.1);
+  if(e.key==='-')cam.radius=Math.min(cam.maxR,cam.radius+cam.radius*.1);
+  if(e.key==='0')cam.reset();
+  if(e.key==='ArrowLeft')cam.panX-=.3;
+  if(e.key==='ArrowRight')cam.panX+=.3;
+  if(e.key==='ArrowUp')cam.panY+=.3;
+  if(e.key==='ArrowDown')cam.panY-=.3;
+  if(e.key==='Escape'){showNodeDetail(null);document.getElementById('matrix-viewer').style.display='none';document.getElementById('attn-viewer').style.display='none';}
+  cam.apply();
+});
+
+// ══════════════════════════════════════════════════════════
+//  MISC HELPERS
+// ══════════════════════════════════════════════════════════
+function updateDsInfo(){
+  const key=document.getElementById('dataset-select').value;const ds=DATASETS[key];if(!ds)return;
+  document.getElementById('ds-info').innerHTML=`<span>${ds.desc}</span> IN:<span>${ds.inputDim}</span> OUT:<span>${ds.outputDim}</span> TASK:<span>${ds.task}</span>`;
+  const hd=document.getElementById('hud-ds');if(hd)hd.textContent=`DATA: ${ds.name}`;
+}
+function updateHUD(){
+  const key=document.getElementById('network-select').value;const def=NETS[key];
+  if(!def)return;
+  document.getElementById('hud-title').textContent=def.name.toUpperCase();
+  document.getElementById('hud-net').textContent=`ARCH: ${(S.customLayers||def.layers).join('→')}`;
+  document.getElementById('hud-ds').textContent=`DATA: ${DATASETS[document.getElementById('dataset-select').value]?.name||'—'}`;
+}
+function showPhaseBanner(phase){
+  const labels={FORWARD:'▶ FORWARD — activations →',BACKWARD:'◀ BACKWARD — gradients ←',UPDATE:'⟳ UPDATE — w ← w − lr·∇'};
+  phaseBanner.textContent=labels[phase]||phase;phaseBanner.className='show '+phase.toLowerCase();S.phaseBannerTimer=1.2;
+}
+
+// Load URL params
+(function loadParams(){
+  const p=new URLSearchParams(window.location.search);
+  if(p.get('net'))document.getElementById('network-select').value=p.get('net');
+  if(p.get('ds'))document.getElementById('dataset-select').value=p.get('ds');
+  if(p.get('opt'))document.getElementById('opt-select').value=p.get('opt');
+  if(p.get('lr')){S.lr=parseFloat(p.get('lr'));document.getElementById('lr-val').textContent=S.lr.toFixed(4);}
+  if(p.get('bs')){S.batchSize=parseInt(p.get('bs'));}
+})();
+
+// ══════════════════════════════════════════════════════════
+//  MAIN RENDER LOOP
+// ══════════════════════════════════════════════════════════
+let lastT=0;
+// NOTE: workaround for arrow in string
+const injectBtn=document.getElementById('btn-inject-noise');
+// Fix the noise injection arrow literal
+injectBtn.onclick=()=>{
+  S.weights.forEach(l=>l.forEach(r=>r.forEach((_,i,arr)=>{arr[i]+=(Math.random()*2-1)*S.noiseScale;})));
+  buildNetwork();
+  document.getElementById('sb-status').textContent='NOISE INJECTED';
+  setTimeout(()=>document.getElementById('sb-status').textContent='TRAINING',1500);
+};
+
+function animate(t){
+  requestAnimationFrame(animate);
+  const dt=Math.min(.05,(t-lastT)/1000);lastT=t;
+  if(S.running){
+    S.phaseProgress+=dt*S.speed/PHASE_DUR;
+    if(S.phaseProgress>=1){
+      S.phaseProgress=0;S.phaseIndex=(S.phaseIndex+1)%PHASES.length;
+      if(S.phaseIndex===0)trainStep();
+      document.getElementById('sb-phase').textContent=PHASES[S.phaseIndex];
+      showPhaseBanner(PHASES[S.phaseIndex]);
+      if(PHASES[S.phaseIndex]==='UPDATE')spotTimer=0;
+    }
+    maybeSpawnParticles(dt);updateParticles(dt);updateEdges();updateNodes();
+    drawOverlay(dt);
+    renderArchBuilder();
+  } else {
+    updateParticles(dt);overlayCtx.clearRect(0,0,overlayC.width,overlayC.height);
+  }
+  if(document.getElementById('tog-3d').checked&&!cam.isDragging){cam.theta+=dt*.3;cam.apply();}
+  else cam.update(dt);
+  renderer.render(scene,camera);
+}
+
+// ══════════════════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════════════════
+initNetwork();
+animate(0);
+updateDsInfo();
+renderArchBuilder();
+document.getElementById('lr-val').textContent='0.010';
+document.getElementById('bs-val').textContent='32';
+document.getElementById('sp-val').textContent='1.0×';
+document.getElementById('do-val').textContent='0.0';
+document.getElementById('l2-val').textContent='0.000';
+document.getElementById('gc-val').textContent='OFF';
+document.getElementById('noise-val').textContent='0.1';
+document.getElementById('prune-val').textContent='0.05';
+</script>
+</body>
+</html>
